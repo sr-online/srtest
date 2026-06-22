@@ -74,8 +74,28 @@
         .tab-btn.active { border-color: #1d4ed8; color: #1d4ed8; }
         .tab-btn.inactive { color: #94a3b8; }
         .tab-btn.inactive:hover { color: #64748b; }
-        .tabs-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .tabs-scroll {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
         .tabs-scroll::-webkit-scrollbar { display: none; }
+        /* filter chips scroll row */
+        .chips-scroll {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            gap: 8px;
+            padding-bottom: 2px;
+        }
+        .chips-scroll::-webkit-scrollbar { display: none; }
+        .chips-scroll > * { flex-shrink: 0; }
 
         @media (max-width: 640px) {
             .data-table th:nth-child(4), .data-table td:nth-child(4),
@@ -169,7 +189,7 @@
     </div>
 
     <!-- Tabs -->
-    <div class="bg-white rounded-2xl shadow-sm mb-4 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-sm mb-4" style="border-radius:16px">
         <div class="flex border-b border-gray-100 tabs-scroll">
             <button onclick="switchMainTab('submissions')" id="mtab-submissions" class="tab-btn active">
                 <i class="fas fa-list-alt mr-2"></i>ผลการสอบ
@@ -187,27 +207,27 @@
     <div id="tab-submissions">
         <!-- Filters -->
         <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
-            <div class="flex flex-wrap items-center gap-3">
-                <span class="text-sm font-semibold text-gray-600"><i class="fas fa-filter mr-2 text-gray-400"></i>กรองตาม:</span>
-                <div class="flex flex-wrap gap-2" id="typeFilters">
+            <!-- Row 1: type chips -->
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-sm font-semibold text-gray-600 flex-shrink-0"><i class="fas fa-filter mr-1.5 text-gray-400"></i>ประเภท:</span>
+                <div class="chips-scroll" id="typeFilters">
                     <button onclick="applyFilter('type','all')" class="filter-chip active" data-type-chip="all">ทั้งหมด</button>
                     <button onclick="applyFilter('type','สอวน.')" class="filter-chip inactive" data-type-chip="สอวน.">สอวน.</button>
                     <button onclick="applyFilter('type','A-Level')" class="filter-chip inactive" data-type-chip="A-Level">A-Level</button>
                     <button onclick="applyFilter('type','O-NET')" class="filter-chip inactive" data-type-chip="O-NET">O-NET</button>
-                </div>
-                <div class="flex flex-wrap gap-2 ml-auto items-center">
-                    <select id="roundFilter" onchange="applyFilter('round',this.value)" class="text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-400">
-                        <option value="all">ทุกครั้ง</option>
-                    </select>
-                    <select id="statusFilter" onchange="applyFilter('status',this.value)" class="text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-400">
-                        <option value="all">ทุกสถานะ</option>
-                        <option value="pending">รอตรวจ</option>
-                        <option value="graded">ตรวจแล้ว</option>
-                    </select>
-                    <button onclick="exportCSV()" class="text-sm px-4 py-1.5 rounded-xl bg-green-50 text-green-700 border-2 border-green-200 font-semibold hover:bg-green-100 transition-all">
-                        <i class="fas fa-file-csv mr-1"></i>Export CSV
-                    </button>
-                </div>
+            <!-- Row 2: selects + export -->
+            <div class="flex flex-wrap gap-2 items-center">
+                <select id="roundFilter" onchange="applyFilter('round',this.value)" class="text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-400">
+                    <option value="all">ทุกครั้ง</option>
+                </select>
+                <select id="statusFilter" onchange="applyFilter('status',this.value)" class="text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-400">
+                    <option value="all">ทุกสถานะ</option>
+                    <option value="pending">รอตรวจ</option>
+                    <option value="graded">ตรวจแล้ว</option>
+                </select>
+                <button onclick="exportCSV()" class="text-sm px-4 py-1.5 rounded-xl bg-green-50 text-green-700 border-2 border-green-200 font-semibold hover:bg-green-100 transition-all">
+                    <i class="fas fa-file-csv mr-1"></i>Export CSV
+                </button>
             </div>
         </div>
 

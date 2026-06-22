@@ -52,7 +52,16 @@
         .timer-box.urgent { background: rgba(239,68,68,0.3); animation: blink 1s infinite; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.6} }
 
-        .question-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+        .question-nav { display: flex; flex-wrap: nowrap; gap: 6px; }
+        /* touch scroll for all horizontal bars */
+        .h-scroll-bar {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .h-scroll-bar::-webkit-scrollbar { display: none; }
+        .h-scroll-bar > * { flex-shrink: 0; }
         .q-btn {
             width: 34px; height: 34px; border-radius: 8px;
             border: 2px solid; font-size: 12px; font-weight: 700;
@@ -211,15 +220,19 @@
     </div>
 
     <!-- Question navigator (scrollable bar) -->
-    <div class="bg-white border-b border-gray-100 px-4 py-3 overflow-x-auto">
-        <div class="flex items-center gap-3">
-            <span class="text-xs text-gray-500 font-medium whitespace-nowrap">ข้อ:</span>
-            <div class="question-nav" id="qNavBar"></div>
-            <div class="flex items-center gap-2 text-xs whitespace-nowrap ml-2">
-                <span class="w-3 h-3 rounded bg-blue-500 inline-block"></span>ตอบแล้ว
-                <span class="w-3 h-3 rounded bg-yellow-300 border border-yellow-400 inline-block"></span>ติดธง
-                <span class="w-3 h-3 rounded bg-white border-2 border-gray-300 inline-block"></span>ยังไม่ตอบ
+    <div class="bg-white border-b border-gray-100 px-4 py-3">
+        <!-- legend row -->
+        <div class="flex items-center gap-3 text-xs mb-2 flex-wrap">
+            <span class="text-gray-500 font-medium">ข้อ:</span>
+            <div class="flex items-center gap-1.5 ml-auto">
+                <span class="w-3 h-3 rounded bg-blue-500 inline-block"></span><span class="text-gray-500">ตอบแล้ว</span>
+                <span class="w-3 h-3 rounded bg-yellow-300 border border-yellow-400 inline-block ml-2"></span><span class="text-gray-500">ติดธง</span>
+                <span class="w-3 h-3 rounded bg-white border-2 border-gray-300 inline-block ml-2"></span><span class="text-gray-500">ยังไม่ตอบ</span>
             </div>
+        </div>
+        <!-- scrollable question buttons -->
+        <div class="h-scroll-bar">
+            <div class="question-nav" id="qNavBar"></div>
         </div>
     </div>
 

@@ -60,6 +60,18 @@
         .tab-active { background:#1d4ed8; color:#fff; }
         .tab-inactive { background:#f1f5f9; color:#64748b; }
         .tab-inactive:hover { background:#e2e8f0; }
+        /* ===== UNIVERSAL TOUCH-SCROLL TABS ===== */
+        .h-scroll {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            gap: 6px;
+        }
+        .h-scroll::-webkit-scrollbar { display: none; }
+        .h-scroll > * { flex-shrink: 0; }
         .badge-type { font-size:11px; padding:2px 8px; border-radius:999px; font-weight:600; }
         .float-icon { animation: floatY 3s ease-in-out infinite; }
         @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
@@ -170,7 +182,7 @@
                 </div>
 
                 <!-- Filter tabs -->
-                <div class="flex gap-1.5 mb-4 flex-wrap">
+                <div class="h-scroll mb-4">
                     <button onclick="filterBoard('all')" id="ftab-all" class="tab-active px-3 py-1 rounded-lg text-xs font-semibold transition-all">ทั้งหมด</button>
                     <button onclick="filterBoard('สอวน.')" id="ftab-สอวน." class="tab-inactive px-3 py-1 rounded-lg text-xs font-semibold transition-all">สอวน.</button>
                     <button onclick="filterBoard('A-Level')" id="ftab-A-Level" class="tab-inactive px-3 py-1 rounded-lg text-xs font-semibold transition-all">A-Level</button>
