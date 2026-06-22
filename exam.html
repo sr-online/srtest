@@ -12,7 +12,12 @@
     <script src="firebase-config.js"></script>
     <style>
         * { font-family: 'Sarabun', sans-serif; }
+        html { overflow-x: hidden; scrollbar-width: none; }
+        html::-webkit-scrollbar { display: none; }
+        body::-webkit-scrollbar { display: none; }
         body { background: #f0f4f8; }
+        [style*="overflow-y:auto"], [style*="overflow-y: auto"],
+        .overflow-y-auto { -webkit-overflow-scrolling: touch; }
 
         /* ===== PHASE VISIBILITY ===== */
         .phase { display: none; }

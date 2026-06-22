@@ -14,6 +14,11 @@
         * { font-family: 'Sarabun', sans-serif; }
         body { background: #f0f4f8; }
 
+        html { overflow-x: hidden; scrollbar-width: none; }
+        html::-webkit-scrollbar { display: none; }
+        body::-webkit-scrollbar { display: none; }
+        [style*="overflow-y:auto"], [style*="overflow-y: auto"],
+        .overflow-y-auto { -webkit-overflow-scrolling: touch; }
         /* Login */
         .login-overlay {
             position: fixed; inset: 0; z-index: 200;
@@ -54,7 +59,7 @@
         /* Grade Modal */
         .grade-modal { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); align-items:flex-start; justify-content:center; padding-top:40px; }
         .grade-modal.show { display:flex; }
-        .grade-panel { background:white; border-radius:24px; width:95%; max-width:700px; max-height:85vh; overflow-y:auto; }
+        .grade-panel { background:white; border-radius:24px; width:95%; max-width:700px; max-height:85vh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 
         /* Exam management */
         .exam-manage-modal { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
@@ -383,7 +388,7 @@
 
 <!-- ===== ADD EXAM MODAL ===== -->
 <div class="exam-manage-modal" id="addExamModal">
-    <div class="bg-white rounded-3xl p-6 mx-4 fade-in" style="width:90%;max-width:520px;max-height:90vh;overflow-y:auto">
+    <div class="bg-white rounded-3xl p-6 mx-4 fade-in" style="width:90%;max-width:520px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;">
         <div class="flex items-center justify-between mb-5">
             <h3 class="font-bold text-gray-800"><i class="fas fa-plus-circle text-blue-500 mr-2"></i>เพิ่มข้อสอบ</h3>
             <button onclick="document.getElementById('addExamModal').classList.remove('show')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>

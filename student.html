@@ -13,6 +13,11 @@
     <style>
         * { font-family: 'Sarabun', sans-serif; }
         body { background: #f0f4f8; }
+        html { overflow-x: hidden; scrollbar-width: none; }
+        html::-webkit-scrollbar { display: none; }
+        body::-webkit-scrollbar { display: none; }
+        [style*="overflow-y:auto"], [style*="overflow-y: auto"],
+        .overflow-y-auto { -webkit-overflow-scrolling: touch; }
         .topbar { background: linear-gradient(135deg, #0f2b6b, #1d4ed8); }
         .student-card {
             background: linear-gradient(135deg, #1e3a8a, #3b82f6, #1d4ed8);
@@ -80,7 +85,7 @@
         .tabs-scroll::-webkit-scrollbar { display: none; }
         .score-modal { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
         .score-modal.show { display:flex; align-items:center; justify-content:center; }
-        .score-detail-card { background:#fff; border-radius:24px; width:90%; max-width:480px; max-height:80vh; overflow-y:auto; }
+        .score-detail-card { background:#fff; border-radius:24px; width:90%; max-width:480px; max-height:80vh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
         .fade-in { animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .round-badge {
