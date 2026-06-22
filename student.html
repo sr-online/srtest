@@ -294,7 +294,18 @@ function renderExams() {
         return;
     }
 
-    grid.innerHTML = filtered.map(exam => buildExamCard(exam)).join('');
+    // For A-Level: group by round → ONE combined card per round
+    if (currentType === 'A-Level') {
+        const roundMap = {};
+        filtered.forEach(e => {
+            if (!roundMap[e.round]) roundMap[e.round] = [];
+            roundMap[e.round].push(e);
+        });
+        const sortedRounds = Object.keys(roundMap).sort((a,b) => a - b);
+        grid.innerHTML = sortedRounds.map(r => buildCombinedCard(parseInt(r), roundMap[r])).join('');
+    } else {
+        grid.innerHTML = filtered.map(exam => buildExamCard(exam)).join('');
+    }
 }
 
 function buildExamCard(exam) {
@@ -392,6 +403,99 @@ function formatDate(d) {
     if (!d || !(d instanceof Date)) return 'ไม่ระบุ';
     const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
+function buildCombinedCard(round, roundExams) {
+    const combinedId  = 'combined_' + round;
+    const sub         = submissions[combinedId];
+    const taken       = !!sub;
+    const anyOpen     = roundExams.some(e => e.isOpen);
+    const open        = anyOpen && !taken;
+    const totalScore  = roundExams.reduce((s, e) => s + (e.maxScore || 0), 0);
+    const totalMin    = roundExams.reduce((s, e) => s + (e.duration || 0), 0);
+    const subjects    = roundExams.map(e => e.subject);
+    const examType    = roundExams[0]?.examType || 'A-Level';
+    const color       = '#059669';
+
+    const subjectIcons = { 'ภาษาอังกฤษ':'fa-language','คณิตศาสตร์ประยุกต์':'fa-square-root-variable','คณิตศาสตร์':'fa-square-root-variable','ชีววิทยา':'fa-dna','เคมี':'fa-flask','ฟิสิกส์':'fa-atom' };
+    const subjectTags = subjects.map(s => `<span class="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium"><i class="fas ${subjectIcons[s]||'fa-file-alt'} text-[10px]"></i>${s}</span>`).join('');
+
+    let statusHTML, actionHTML;
+    if (taken) {
+        const pct = Math.round((sub.totalScore||0) / totalScore * 100);
+        const graded = sub.isGraded;
+        statusHTML = `<span class="status-chip chip-taken"><i class="fas fa-check-circle"></i>ทดสอบแล้ว${!graded?' (รอตรวจ)':''}</span>`;
+        actionHTML = `<button onclick="showCombinedScore('${combinedId}',${totalScore})" class="btn-view w-full mt-3 py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2"><i class="fas fa-chart-line"></i>ดูผลคะแนน</button>`;
+    } else if (open) {
+        statusHTML = `<span class="status-chip chip-open"><i class="fas fa-door-open"></i>เปิดทดสอบแล้ว</span>`;
+        actionHTML = `<button onclick="goToCombinedExam(${round})" class="btn-start w-full mt-3 py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2"><i class="fas fa-play"></i>เริ่มทดสอบรวม</button>`;
+    } else {
+        statusHTML = `<span class="status-chip chip-locked"><i class="fas fa-lock"></i>ยังไม่เปิดทดสอบ</span>`;
+        actionHTML = `<button disabled class="w-full mt-3 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 bg-gray-100 text-gray-400 cursor-not-allowed"><i class="fas fa-clock"></i>รอการเปิด</button>`;
+    }
+
+    const scoreDisplay = taken && sub.isGraded ? `
+        <div class="mt-3 pt-3 border-t border-gray-100">
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>คะแนนรวม</span>
+                <span class="font-bold text-base text-emerald-600">${sub.totalScore||0} / ${totalScore}</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2">
+                <div class="h-2 rounded-full bg-emerald-500" style="width:${Math.round((sub.totalScore||0)/totalScore*100)}%"></div>
+            </div>
+        </div>` : (taken && !sub.isGraded ? `<div class="mt-3 p-2 bg-yellow-50 rounded-xl text-center"><p class="text-xs text-yellow-600 font-medium"><i class="fas fa-hourglass-half mr-1"></i>รอครูตรวจข้อเขียน</p></div>` : '');
+
+    return `
+    <div class="exam-card ${taken?'taken':open?'available':'locked'} p-5 fade-in">
+        <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+                <div class="round-badge" style="background:linear-gradient(135deg,${color},${color}cc)">${round}</div>
+                <div>
+                    <p class="text-xs text-gray-400 font-medium">ครั้งที่ ${round} — รวมทุกวิชา</p>
+                    <h3 class="font-bold text-gray-800">${examType}</h3>
+                </div>
+            </div>
+            <i class="fas fa-layer-group text-gray-200 text-3xl"></i>
+        </div>
+        <div class="flex flex-wrap gap-1.5 mb-3">${subjectTags}</div>
+        <div class="flex items-center gap-3 text-xs text-gray-400 mb-3">
+            <span><i class="fas fa-clock mr-1"></i>${totalMin} นาที</span>
+            <span><i class="fas fa-star mr-1"></i>${totalScore} คะแนน</span>
+            <span><i class="fas fa-list-ol mr-1"></i>${roundExams.length} วิชา</span>
+        </div>
+        <div class="flex items-center justify-between mb-1">${statusHTML}</div>
+        ${actionHTML}${scoreDisplay}
+    </div>`;
+}
+
+function goToCombinedExam(round) {
+    window.location.href = 'exam.html?round=' + round;
+}
+
+function showCombinedScore(combinedId, maxScore) {
+    const sub = submissions[combinedId];
+    if (!sub) return;
+    const modal = document.getElementById('scoreModal');
+    const body  = document.getElementById('scoreModalBody');
+    modal.classList.add('show');
+    const score  = sub.totalScore || 0;
+    const pct    = Math.round(score / maxScore * 100);
+    const color  = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+    const grade  = pct >= 80 ? 'ดีมาก' : pct >= 70 ? 'ดี' : pct >= 60 ? 'พอใช้' : 'ต้องพัฒนา';
+    const dateSubmit = sub.submittedAt?.toDate ? formatDate(sub.submittedAt.toDate()) : '-';
+    body.innerHTML = `
+        <div class="text-center mb-5">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-3" style="background:${color}22">
+                <span class="text-3xl font-extrabold" style="color:${color}">${score}</span>
+            </div>
+            <p class="text-gray-500 text-sm">/ ${maxScore} คะแนน</p>
+            <p class="font-bold text-lg mt-1" style="color:${color}">${grade} (${pct}%)</p>
+        </div>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">วิชา</span><span class="font-medium">รวมทุกวิชา</span></div>
+            <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">คะแนน MC</span><span class="font-medium text-green-600">${sub.autoScore||0} คะแนน</span></div>
+            <div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">วันที่ส่ง</span><span class="font-medium">${dateSubmit}</span></div>
+        </div>`;
 }
 
 function goToExam(examId) {

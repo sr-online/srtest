@@ -214,12 +214,16 @@
         <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
             <!-- Row 1: type chips -->
             <div class="flex items-center gap-2 mb-3">
-                <span class="text-sm font-semibold text-gray-600 flex-shrink-0"><i class="fas fa-filter mr-1.5 text-gray-400"></i>ประเภท:</span>
+                <span class="text-sm font-semibold text-gray-600 flex-shrink-0">
+                    <i class="fas fa-filter mr-1.5 text-gray-400"></i>ประเภท:
+                </span>
                 <div class="chips-scroll" id="typeFilters">
                     <button onclick="applyFilter('type','all')" class="filter-chip active" data-type-chip="all">ทั้งหมด</button>
                     <button onclick="applyFilter('type','สอวน.')" class="filter-chip inactive" data-type-chip="สอวน.">สอวน.</button>
                     <button onclick="applyFilter('type','A-Level')" class="filter-chip inactive" data-type-chip="A-Level">A-Level</button>
                     <button onclick="applyFilter('type','O-NET')" class="filter-chip inactive" data-type-chip="O-NET">O-NET</button>
+                </div>
+            </div>
             <!-- Row 2: selects + export -->
             <div class="flex flex-wrap gap-2 items-center">
                 <select id="roundFilter" onchange="applyFilter('round',this.value)" class="text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-400">
@@ -277,11 +281,16 @@
     <!-- ===== STUDENTS TAB ===== -->
     <div id="tab-students" class="hidden">
         <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h3 class="font-bold text-gray-700"><i class="fas fa-users text-blue-500 mr-2"></i>รายชื่อนักเรียน</h3>
-                <button onclick="openAddStudent()" class="text-sm px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
-                    <i class="fas fa-plus mr-1.5"></i>เพิ่มนักเรียน
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="openImportStudents()" class="text-sm px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-all">
+                        <i class="fas fa-file-import mr-1.5"></i>นำเข้ารายชื่อ
+                    </button>
+                    <button onclick="openAddStudent()" class="text-sm px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
+                        <i class="fas fa-plus mr-1.5"></i>เพิ่มนักเรียน
+                    </button>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="data-table">
@@ -307,11 +316,16 @@
     <!-- ===== EXAMS TAB ===== -->
     <div id="tab-exams" class="hidden">
         <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h3 class="font-bold text-gray-700"><i class="fas fa-file-alt text-blue-500 mr-2"></i>จัดการข้อสอบ</h3>
-                <button onclick="openAddExam()" class="text-sm px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
-                    <i class="fas fa-plus mr-1.5"></i>เพิ่มข้อสอบ
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="openImportExam()" class="text-sm px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-all">
+                        <i class="fas fa-file-import mr-1.5"></i>นำเข้าข้อสอบ
+                    </button>
+                    <button onclick="openAddExam()" class="text-sm px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
+                        <i class="fas fa-plus mr-1.5"></i>เพิ่มข้อสอบ
+                    </button>
+                </div>
             </div>
             <div id="examListTable" class="overflow-x-auto">
                 <table class="data-table">
@@ -435,7 +449,170 @@
     </div>
 </div>
 
+<!-- ===== IMPORT STUDENTS MODAL ===== -->
+<div class="exam-manage-modal" id="importStudentModal">
+    <div class="bg-white rounded-3xl p-6 mx-4 fade-in" style="width:90%;max-width:500px">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="font-bold text-gray-800"><i class="fas fa-file-import text-green-500 mr-2"></i>นำเข้ารายชื่อนักเรียน</h3>
+            <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+        </div>
+        <div id="importPreview" class="mb-4"></div>
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">ประเภทสอบ (ค่าเริ่มต้น)</label>
+                <select id="import_type" class="t-input w-full px-4 py-2.5 rounded-xl text-sm">
+                    <option value="สอวน.">สอวน.</option>
+                    <option value="A-Level">A-Level</option>
+                    <option value="O-NET">O-NET</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">วิชา (ค่าเริ่มต้น — เว้นว่างได้)</label>
+                <input id="import_subject" type="text" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="คณิตศาสตร์, ฟิสิกส์...">
+            </div>
+        </div>
+        <div id="importProgress" class="hidden mt-4 p-3 bg-blue-50 rounded-xl">
+            <div class="flex items-center gap-2 text-blue-700 text-sm mb-2">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <span id="importProgressText">กำลังนำเข้า...</span>
+            </div>
+            <div class="w-full bg-blue-100 rounded-full h-2">
+                <div id="importProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width:0%"></div>
+            </div>
+        </div>
+        <div id="importErr" class="hidden mt-3 p-2 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs text-center"></div>
+        <div class="flex gap-3 mt-5">
+            <button onclick="closeImportModal()" id="importCancelBtn" class="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm">ยกเลิก</button>
+            <button onclick="startImport()" id="importStartBtn" class="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition-all">
+                <i class="fas fa-cloud-upload-alt mr-1.5"></i>อัพโหลดขึ้น Firebase
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== IMPORT EXAM MODAL ===== -->
+<div class="exam-manage-modal" id="importExamModal">
+    <div class="bg-white rounded-3xl p-6 mx-4 fade-in" style="width:90%;max-width:520px">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="font-bold text-gray-800"><i class="fas fa-file-import text-purple-500 mr-2"></i>นำเข้าข้อสอบ A-Level</h3>
+            <button onclick="closeImportExamModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+        </div>
+        <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-4">
+            <p class="font-semibold text-purple-700 text-sm mb-2">รายวิชาที่จะนำเข้า (4 วิชา, 28 ข้อ)</p>
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs text-purple-600">
+                    <span><i class="fas fa-language mr-1.5"></i>ภาษาอังกฤษ A-Level (Reading + Conversation)</span>
+                    <span class="font-semibold">13 ข้อ</span>
+                </div>
+                <div class="flex justify-between text-xs text-purple-600">
+                    <span><i class="fas fa-square-root-alt mr-1.5"></i>คณิตศาสตร์ประยุกต์ A-Level</span>
+                    <span class="font-semibold">5 ข้อ</span>
+                </div>
+                <div class="flex justify-between text-xs text-purple-600">
+                    <span><i class="fas fa-dna mr-1.5"></i>ชีววิทยา (ข้อ 3,4,5 มีรูปภาพ)</span>
+                    <span class="font-semibold">5 ข้อ</span>
+                </div>
+                <div class="flex justify-between text-xs text-purple-600">
+                    <span><i class="fas fa-flask mr-1.5"></i>เคมี A-Level</span>
+                    <span class="font-semibold">5 ข้อ</span>
+                </div>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">ครั้งที่</label>
+                <input id="examImport_round" type="number" value="1" min="1" class="t-input w-full px-4 py-2.5 rounded-xl text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">วันสอบ</label>
+                <input id="examImport_date" type="date" class="t-input w-full px-4 py-2.5 rounded-xl text-sm">
+            </div>
+        </div>
+        <div id="examImportProgress" class="hidden mt-4 p-3 bg-purple-50 rounded-xl">
+            <div class="flex items-center gap-2 text-purple-700 text-sm mb-2">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <span id="examImportProgressText">กำลังนำเข้า...</span>
+            </div>
+            <div class="w-full bg-purple-100 rounded-full h-2">
+                <div id="examImportProgressBar" class="bg-purple-600 h-2 rounded-full transition-all duration-300" style="width:0%"></div>
+            </div>
+        </div>
+        <div id="examImportErr" class="hidden mt-3 p-2 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs text-center"></div>
+        <div class="flex gap-3 mt-5">
+            <button onclick="closeImportExamModal()" id="examImportCancelBtn" class="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm">ยกเลิก</button>
+            <button onclick="startExamImport()" id="examImportStartBtn" class="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-all">
+                <i class="fas fa-cloud-upload-alt mr-1.5"></i>นำเข้า Firebase
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+// ===== EMBEDDED STUDENT DATA =====
+const STUDENTS_IMPORT_DATA = [{"number":1,"studentId":"15961","name":"นายกัลวัฒน์ ขันอาษา","class":"ม.4/8","level":"ม.4"},{"number":2,"studentId":"14018","name":"นายธนวัฒน์ ศิริวงษ์","class":"ม.4/8","level":"ม.4"},{"number":3,"studentId":"15963","name":"นายบรรณวิชญ์ วงค์เหง้า","class":"ม.4/8","level":"ม.4"},{"number":4,"studentId":"15964","name":"นายวัชระพงษ์ ยาทรัพย์","class":"ม.4/8","level":"ม.4"},{"number":5,"studentId":"15965","name":"นายวิศรุต เพลงสันเทียะ","class":"ม.4/8","level":"ม.4"},{"number":6,"studentId":"14289","name":"นายอวยชัย ผลเคน","class":"ม.4/8","level":"ม.4"},{"number":7,"studentId":"14290","name":"นางสาวกนกกร วรรณวงศ์","class":"ม.4/8","level":"ม.4"},{"number":8,"studentId":"14330","name":"นางสาวกนกวรรณ ปากดี","class":"ม.4/8","level":"ม.4"},{"number":9,"studentId":"14291","name":"นางสาวกัณฐิกา ศรีสวัสดิ์","class":"ม.4/8","level":"ม.4"},{"number":10,"studentId":"15966","name":"นางสาวกิตตยาภรณ์ บุญญา","class":"ม.4/8","level":"ม.4"},{"number":11,"studentId":"14331","name":"นางสาวขวัญทิชา ติธรรม","class":"ม.4/8","level":"ม.4"},{"number":12,"studentId":"15967","name":"นางสาวจิรัชยา เชียงขวาง","class":"ม.4/8","level":"ม.4"},{"number":13,"studentId":"14297","name":"นางสาวณัฐริกา แสนพัน","class":"ม.4/8","level":"ม.4"},{"number":14,"studentId":"14337","name":"นางสาวธัญสิริรักษ์ วงษ์จันทร์","class":"ม.4/8","level":"ม.4"},{"number":15,"studentId":"15968","name":"นางสาวธันยพร กวนลีหลง","class":"ม.4/8","level":"ม.4"},{"number":16,"studentId":"14075","name":"นางสาวประภาภรณ์ ป้องทอง","class":"ม.4/8","level":"ม.4"},{"number":17,"studentId":"14302","name":"นางสาวปาลิตา ประกิ่ง","class":"ม.4/8","level":"ม.4"},{"number":18,"studentId":"14038","name":"นางสาวพชรวรรณ ศิริวงษ์","class":"ม.4/8","level":"ม.4"},{"number":19,"studentId":"15002","name":"นางสาวพิชชาภา อุผำ","class":"ม.4/8","level":"ม.4"},{"number":20,"studentId":"14080","name":"นางสาวพิมพ์ชนก คัณทักษ์","class":"ม.4/8","level":"ม.4"},{"number":21,"studentId":"15969","name":"นางสาวเพชรชมพู สืบสกุล","class":"ม.4/8","level":"ม.4"},{"number":22,"studentId":"14264","name":"นางสาววรัญญา ขันบรรจง","class":"ม.4/8","level":"ม.4"},{"number":23,"studentId":"14307","name":"นางสาวสุธิมา โกษาแสง","class":"ม.4/8","level":"ม.4"},{"number":24,"studentId":"14271","name":"นางสาวสุรินพร ป้องทอง","class":"ม.4/8","level":"ม.4"},{"number":25,"studentId":"15970","name":"นางสาวอนันตญา อุปพงษ์","class":"ม.4/8","level":"ม.4"},{"number":26,"studentId":"14310","name":"นางสาวอภิญยาภรณ์ จงดี","class":"ม.4/8","level":"ม.4"},{"number":1,"studentId":"14351","name":"นายกิตตินันท์ กวนศรี","class":"ม.4/9","level":"ม.4"},{"number":2,"studentId":"14087","name":"นายชินนาอาร์ช โคตบิน","class":"ม.4/9","level":"ม.4"},{"number":3,"studentId":"14054","name":"นายณัฐพัชร์ แสงเพ็ชร์","class":"ม.4/9","level":"ม.4"},{"number":4,"studentId":"15962","name":"นายธนทรัพย์ ทองเพชร","class":"ม.4/9","level":"ม.4"},{"number":5,"studentId":"14359","name":"นายศุภากร คัณทักษ์","class":"ม.4/9","level":"ม.4"},{"number":6,"studentId":"14360","name":"นายเศรษฐ์ศิริ บุพศิริ","class":"ม.4/9","level":"ม.4"},{"number":7,"studentId":"14327","name":"นายสุญญตา ทนงค์","class":"ม.4/9","level":"ม.4"},{"number":8,"studentId":"14178","name":"นางสาวกชกร สง่าศรี","class":"ม.4/9","level":"ม.4"},{"number":9,"studentId":"15971","name":"นางสาวขวัญจิรา อุดานนท์","class":"ม.4/9","level":"ม.4"},{"number":10,"studentId":"15972","name":"นางสาวจุฑาภรณ์ อามาตย์มนตรี","class":"ม.4/9","level":"ม.4"},{"number":11,"studentId":"15973","name":"นางสาวชลดา ไกรยนา","class":"ม.4/9","level":"ม.4"},{"number":12,"studentId":"14370","name":"นางสาวณิชาพัชร วงศ์เพ็ญ","class":"ม.4/9","level":"ม.4"},{"number":13,"studentId":"14146","name":"นางสาวทิพวรรณ เคนดง","class":"ม.4/9","level":"ม.4"},{"number":14,"studentId":"15974","name":"นางสาวนันทิดา จันจุฬา","class":"ม.4/9","level":"ม.4"},{"number":15,"studentId":"15975","name":"นางสาวปนัสยา โทรัตน์","class":"ม.4/9","level":"ม.4"},{"number":16,"studentId":"15977","name":"นางสาวปัญญาภา ลุนะหา","class":"ม.4/9","level":"ม.4"},{"number":17,"studentId":"15979","name":"นางสาวพัชรมัย วงษ์นาค","class":"ม.4/9","level":"ม.4"},{"number":18,"studentId":"15531","name":"นางสาวพีรยากร ศรีโสภา","class":"ม.4/9","level":"ม.4"},{"number":19,"studentId":"14376","name":"นางสาวเพชรชฎาภา กิจพฤกษ์","class":"ม.4/9","level":"ม.4"},{"number":20,"studentId":"14224","name":"นางสาวภัทราภรณ์ วังพระราช","class":"ม.4/9","level":"ม.4"},{"number":21,"studentId":"15980","name":"นางสาวภาชิสา สุขสัมฤทธิ์","class":"ม.4/9","level":"ม.4"},{"number":22,"studentId":"14225","name":"นางสาวรุ้งราตรี สุขสวน","class":"ม.4/9","level":"ม.4"},{"number":23,"studentId":"15981","name":"นางสาวลลิตวดี ด่านระหาร","class":"ม.4/9","level":"ม.4"},{"number":24,"studentId":"14345","name":"นางสาวศรันยพร นันทะวงค์","class":"ม.4/9","level":"ม.4"},{"number":25,"studentId":"14347","name":"นางสาวสิรินญา ทากิระ","class":"ม.4/9","level":"ม.4"},{"number":26,"studentId":"14193","name":"นางสาวสุพิชญา ดาเชิงเขา","class":"ม.4/9","level":"ม.4"},{"number":27,"studentId":"14156","name":"นางสาวเสาวลักษณ์ แจ้งอารมณ์","class":"ม.4/9","level":"ม.4"},{"number":28,"studentId":"15982","name":"นางสาวอรนุช มะลีรัตน์","class":"ม.4/9","level":"ม.4"},{"number":29,"studentId":"14194","name":"นางสาวอรุณรักษ์ ป้องทอง","class":"ม.4/9","level":"ม.4"},{"number":30,"studentId":"14383","name":"นางสาวอัลิปรียา วดีศิริศักดิ์","class":"ม.4/9","level":"ม.4"},{"number":1,"studentId":"14352","name":"นายเขตต์แดน เสนเพ็ง","class":"ม.4/10","level":"ม.4"},{"number":2,"studentId":"14353","name":"นายณัฐกรณ์ ตั้งกระโทก","class":"ม.4/10","level":"ม.4"},{"number":3,"studentId":"15983","name":"นายธนโชติ ยิ่งเจนจบ","class":"ม.4/10","level":"ม.4"},{"number":4,"studentId":"14277","name":"นายธนิต แถนสีแสง","class":"ม.4/10","level":"ม.4"},{"number":5,"studentId":"14241","name":"นายธีรภัทร ทองหล่อ","class":"ม.4/10","level":"ม.4"},{"number":6,"studentId":"14356","name":"นายปุลิน เอี่ยมจร","class":"ม.4/10","level":"ม.4"},{"number":7,"studentId":"14495","name":"นายปุุริม จินาพร","class":"ม.4/10","level":"ม.4"},{"number":8,"studentId":"14279","name":"นายพสิษฐ์ โมยะ","class":"ม.4/10","level":"ม.4"},{"number":9,"studentId":"14358","name":"นายศักสิทธิ์ ศรีษามุข","class":"ม.4/10","level":"ม.4"},{"number":10,"studentId":"14361","name":"นายอดิศักดิ์ นิดรอด","class":"ม.4/10","level":"ม.4"},{"number":11,"studentId":"14249","name":"นางสาวกมลฉัตร คะดุน","class":"ม.4/10","level":"ม.4"},{"number":12,"studentId":"15984","name":"นางสาวกัญญาณัฐ คัณทักษ์","class":"ม.4/10","level":"ม.4"},{"number":13,"studentId":"15985","name":"นางสาวแคทตริน่า บาระคิน","class":"ม.4/10","level":"ม.4"},{"number":14,"studentId":"15986","name":"นางสาวจันทร์ทิรา โสภา","class":"ม.4/10","level":"ม.4"},{"number":15,"studentId":"14144","name":"นางสาวจิรภิญญา เคนไชยวง","class":"ม.4/10","level":"ม.4"},{"number":16,"studentId":"14251","name":"นางสาวจิรัชยา ยืนยง","class":"ม.4/10","level":"ม.4"},{"number":17,"studentId":"15987","name":"นางสาวชญาภา โยลัย","class":"ม.4/10","level":"ม.4"},{"number":18,"studentId":"14362","name":"นางสาวชนน์ชนก ศรีนารินทร์","class":"ม.4/10","level":"ม.4"},{"number":19,"studentId":"14363","name":"นางสาวชนัญชิดา อุ่นตา","class":"ม.4/10","level":"ม.4"},{"number":20,"studentId":"15988","name":"นางสาวชวพร ผุดีสม","class":"ม.4/10","level":"ม.4"},{"number":21,"studentId":"14366","name":"นางสาวณัฏฐณิชา บุญเกิด","class":"ม.4/10","level":"ม.4"},{"number":22,"studentId":"14367","name":"นางสาวณัฐชา การกระสังข์","class":"ม.4/10","level":"ม.4"},{"number":23,"studentId":"14336","name":"นางสาวดวงกมล วิจักขณาวุธ","class":"ม.4/10","level":"ม.4"},{"number":24,"studentId":"15992","name":"นางสาวดารินทร์ นันทะวงศ์","class":"ม.4/10","level":"ม.4"},{"number":25,"studentId":"14373","name":"นางสาวธิดารัตน์ หล้าเพ็ง","class":"ม.4/10","level":"ม.4"},{"number":26,"studentId":"15989","name":"นางสาวนถัสวรรณ การร้อย","class":"ม.4/10","level":"ม.4"},{"number":27,"studentId":"14338","name":"นางสาวนรกมล เนตรทิพย์","class":"ม.4/10","level":"ม.4"},{"number":28,"studentId":"14900","name":"นางสาวน้ำเพชร แสงแก้ว","class":"ม.4/10","level":"ม.4"},{"number":29,"studentId":"14340","name":"นางสาวประภัสสรณ์ ไชยรินทร์","class":"ม.4/10","level":"ม.4"},{"number":30,"studentId":"15990","name":"นางสาวปัณฑิตา สอนยศ","class":"ม.4/10","level":"ม.4"},{"number":31,"studentId":"14344","name":"นางสาวภัทราณิชา ชิณสาร","class":"ม.4/10","level":"ม.4"},{"number":32,"studentId":"15991","name":"นางสาวรสิกา ไกยสินธ์ุ","class":"ม.4/10","level":"ม.4"},{"number":33,"studentId":"14265","name":"นางสาววรุณี สุระเสียง","class":"ม.4/10","level":"ม.4"},{"number":34,"studentId":"14379","name":"นางสาวศิรภัสสร ปิลอง","class":"ม.4/10","level":"ม.4"},{"number":35,"studentId":"15513","name":"นางสาวสิริยากร ขุนเสถียร","class":"ม.4/10","level":"ม.4"},{"number":36,"studentId":"14382","name":"นางสาวสุุธาสินี ต้นกันยา","class":"ม.4/10","level":"ม.4"},{"number":1,"studentId":"13770","name":"นายณฐกฤต สาธร","class":"ม.5/7","level":"ม.5"},{"number":2,"studentId":"13524","name":"นายณัฐดนัย ธงยศ","class":"ม.5/7","level":"ม.5"},{"number":3,"studentId":"15472","name":"นายพุฒิพงศ์ วงค์พระจันทร์","class":"ม.5/7","level":"ม.5"},{"number":4,"studentId":"13821","name":"นายวริศ มหาวงศ์","class":"ม.5/7","level":"ม.5"},{"number":5,"studentId":"15473","name":"นายสายฟ้า ทีดี","class":"ม.5/7","level":"ม.5"},{"number":6,"studentId":"15532","name":"นายอาชวิน  โคตะบิน","class":"ม.5/7","level":"ม.5"},{"number":7,"studentId":"14509","name":"นางสาวกัญญาภัค สิงห์งอย","class":"ม.5/7","level":"ม.5"},{"number":8,"studentId":"13701","name":"นางสาวจอมขวัญ โพธิ์สุ","class":"ม.5/7","level":"ม.5"},{"number":9,"studentId":"13579","name":"นางสาวชมพูนิก พรมสุภาพ","class":"ม.5/7","level":"ม.5"},{"number":10,"studentId":"13761","name":"นางสาวญาณิศา โงนศรีษะ","class":"ม.5/7","level":"ม.5"},{"number":11,"studentId":"13749","name":"นางสาวน้ำเพชร โสภาน้ำ","class":"ม.5/7","level":"ม.5"},{"number":12,"studentId":"13916","name":"นางสาวประภาวดี รักษา","class":"ม.5/7","level":"ม.5"},{"number":13,"studentId":"13757","name":"นางสาวพัชราวดี  จันทร์รบ","class":"ม.5/7","level":"ม.5"},{"number":14,"studentId":"14511","name":"นางสาวรวินท์นิภา คัณทักษ์","class":"ม.5/7","level":"ม.5"},{"number":15,"studentId":"13677","name":"นางสาววิชญาพร สุโพธิ์","class":"ม.5/7","level":"ม.5"},{"number":16,"studentId":"13888","name":"นางสาวศิรินภา คำใหญ่","class":"ม.5/7","level":"ม.5"},{"number":17,"studentId":"13923","name":"นางสาวศุภิสรา สิงห์งอย","class":"ม.5/7","level":"ม.5"},{"number":18,"studentId":"13927","name":"นางสาวอรวรา ลืออำนาจ","class":"ม.5/7","level":"ม.5"},{"number":1,"studentId":"13851","name":"นายกรวิช สร้อยมณี","class":"ม.5/8","level":"ม.5"},{"number":2,"studentId":"13856","name":"นายณัฐพล ภูนาเมือง","class":"ม.5/8","level":"ม.5"},{"number":3,"studentId":"13815","name":"นายดัสกร คำใบ","class":"ม.5/8","level":"ม.5"},{"number":4,"studentId":"15474","name":"นายธนโชติ จันดาประดิษฐ์","class":"ม.5/8","level":"ม.5"},{"number":5,"studentId":"13858","name":"นายธีรภัทร คัณทักษ์","class":"ม.5/8","level":"ม.5"},{"number":6,"studentId":"13862","name":"นายปิติภัทร มาตรกูล","class":"ม.5/8","level":"ม.5"},{"number":7,"studentId":"13822","name":"นายวัฒนา สีดา","class":"ม.5/8","level":"ม.5"},{"number":8,"studentId":"13866","name":"นายวิทวัส มัยวงศ์","class":"ม.5/8","level":"ม.5"},{"number":9,"studentId":"13823","name":"นายศรวัส คันธะชัย","class":"ม.5/8","level":"ม.5"},{"number":10,"studentId":"13785","name":"นายสุริยา เรือนนา","class":"ม.5/8","level":"ม.5"},{"number":11,"studentId":"15475","name":"นายอนุภัทร์ โคตตะ","class":"ม.5/8","level":"ม.5"},{"number":12,"studentId":"13869","name":"นางสาวการจิรา สลางสิงห์","class":"ม.5/8","level":"ม.5"},{"number":13,"studentId":"15476","name":"นางสาวขวัญวริน การะเกต","class":"ม.5/8","level":"ม.5"},{"number":14,"studentId":"13912","name":"นางสาวชนิษฐา เกตโกบุตร","class":"ม.5/8","level":"ม.5"},{"number":15,"studentId":"13833","name":"นางสาวณัฐธิดา ไชยกา","class":"ม.5/8","level":"ม.5"},{"number":16,"studentId":"15010","name":"นางสาวทรรศนีย์ ศรีโสภา","class":"ม.5/8","level":"ม.5"},{"number":17,"studentId":"13835","name":"นางสาวนรีกานต์ เคนแสง","class":"ม.5/8","level":"ม.5"},{"number":18,"studentId":"13750","name":"นางสาวน้ำมนต์ บวรเบญจพรรณ","class":"ม.5/8","level":"ม.5"},{"number":19,"studentId":"13751","name":"นางสาวนุชนาฎ ติยะบุตร","class":"ม.5/8","level":"ม.5"},{"number":20,"studentId":"13797","name":"นางสาวบัณฑิตา มาตย์วิเศษ","class":"ม.5/8","level":"ม.5"},{"number":21,"studentId":"13839","name":"นางสาวพรพิมล เภตรา","class":"ม.5/8","level":"ม.5"},{"number":22,"studentId":"13758","name":"นางสาวพิมมาดา เภตรา","class":"ม.5/8","level":"ม.5"},{"number":23,"studentId":"15477","name":"นางสาวเมธินี เจริญเวช","class":"ม.5/8","level":"ม.5"},{"number":24,"studentId":"13805","name":"นางสาววรัชยา คำพล","class":"ม.5/8","level":"ม.5"},{"number":25,"studentId":"13887","name":"นางสาวศัลลิยา นาบุญ","class":"ม.5/8","level":"ม.5"},{"number":26,"studentId":"14475","name":"นางสาวศิริกัญญา อนุญาหงษ์","class":"ม.5/8","level":"ม.5"},{"number":27,"studentId":"13926","name":"นางสาวสุเมธินี ไชยต้นเทือก","class":"ม.5/8","level":"ม.5"},{"number":28,"studentId":"15478","name":"นางสาวอชิรญา คำหาร","class":"ม.5/8","level":"ม.5"},{"number":29,"studentId":"13889","name":"นางสาวอภิสรา แสนสง่า","class":"ม.5/8","level":"ม.5"},{"number":1,"studentId":"13892","name":"นายกฤษดากร สิงหาโชติ","class":"ม.5/9","level":"ม.5"},{"number":2,"studentId":"13854","name":"นายจิรวัฒน์ จันทร","class":"ม.5/9","level":"ม.5"},{"number":3,"studentId":"13895","name":"นายณภัทร บุญเกิด","class":"ม.5/9","level":"ม.5"},{"number":4,"studentId":"13896","name":"นายณัฐกรณ์ นะคะจัด","class":"ม.5/9","level":"ม.5"},{"number":5,"studentId":"13897","name":"นายณัฐพล ไชยงาม","class":"ม.5/9","level":"ม.5"},{"number":6,"studentId":"13898","name":"นายณัทรัศช์ โสรินทร์","class":"ม.5/9","level":"ม.5"},{"number":7,"studentId":"13899","name":"นายธราธิป ชัยบิล","class":"ม.5/9","level":"ม.5"},{"number":8,"studentId":"15479","name":"นายประถมทวี บุญกว้าง","class":"ม.5/9","level":"ม.5"},{"number":9,"studentId":"13901","name":"นายปัญญาวุธ ธุพา","class":"ม.5/9","level":"ม.5"},{"number":10,"studentId":"13902","name":"นายพัชรพล ขัติวงค์","class":"ม.5/9","level":"ม.5"},{"number":11,"studentId":"13903","name":"นายพิสิษฐ์โชค ฝึกหัด","class":"ม.5/9","level":"ม.5"},{"number":12,"studentId":"13865","name":"นายภูริภัทร กองคำ","class":"ม.5/9","level":"ม.5"},{"number":13,"studentId":"13697","name":"นายศุภสัณห์ ซื่อตรง","class":"ม.5/9","level":"ม.5"},{"number":14,"studentId":"13904","name":"นายอนุชิต สมรฤทธิ์","class":"ม.5/9","level":"ม.5"},{"number":15,"studentId":"13905","name":"นายอังคาร โปสา","class":"ม.5/9","level":"ม.5"},{"number":16,"studentId":"13906","name":"นายเอกอังกูร  วดีศิริศักดิ์","class":"ม.5/9","level":"ม.5"},{"number":17,"studentId":"13829","name":"นางสาวกวีมาศ โทรัตน์","class":"ม.5/9","level":"ม.5"},{"number":18,"studentId":"13907","name":"นางสาวกัญญาพัชร บุปผเวส","class":"ม.5/9","level":"ม.5"},{"number":19,"studentId":"13908","name":"นางสาวกัญญาภัค บุปผเวส","class":"ม.5/9","level":"ม.5"},{"number":20,"studentId":"13910","name":"นางสาวจิรดา หลิงสีหา","class":"ม.5/9","level":"ม.5"},{"number":21,"studentId":"13911","name":"นางสาวจีระนันท์ โพธิ์นอก","class":"ม.5/9","level":"ม.5"},{"number":22,"studentId":"13873","name":"นางสาวชลลดา ชนะดิษฐ์","class":"ม.5/9","level":"ม.5"},{"number":23,"studentId":"13874","name":"นางสาวชิรินพร โกพลรัตน์","class":"ม.5/9","level":"ม.5"},{"number":24,"studentId":"13746","name":"นางสาวชุติกาญจน์ จันทร์หอม","class":"ม.5/9","level":"ม.5"},{"number":25,"studentId":"13791","name":"นางสาวณัฐกฤตา สมรฤทธิ์","class":"ม.5/9","level":"ม.5"},{"number":26,"studentId":"13915","name":"นางสาวธนัชชา ติยะบุตร","class":"ม.5/9","level":"ม.5"},{"number":27,"studentId":"13796","name":"นางสาวนันทิกานต์ วาระ","class":"ม.5/9","level":"ม.5"},{"number":28,"studentId":"13881","name":"นางสาวนีรัมพร อุผา","class":"ม.5/9","level":"ม.5"},{"number":29,"studentId":"13801","name":"นางสาวปาณิสรา มาศกสิน","class":"ม.5/9","level":"ม.5"},{"number":30,"studentId":"13917","name":"นางสาวพัณณิตา นาโอพิมพ์","class":"ม.5/9","level":"ม.5"},{"number":31,"studentId":"13713","name":"นางสาวพิมพ์รภัทร สีดา","class":"ม.5/9","level":"ม.5"},{"number":32,"studentId":"13760","name":"นางสาวรัญธิดา ทาวอแวง","class":"ม.5/9","level":"ม.5"},{"number":33,"studentId":"13921","name":"นางสาววรทัย นะคะจัด","class":"ม.5/9","level":"ม.5"},{"number":34,"studentId":"15480","name":"นางสาววรรณวิสา การิก","class":"ม.5/9","level":"ม.5"},{"number":35,"studentId":"13924","name":"นางสาวสิริลภัส ปทุมมากร","class":"ม.5/9","level":"ม.5"},{"number":36,"studentId":"13890","name":"นางสาวอรวรรยา ปะนูวี","class":"ม.5/9","level":"ม.5"},{"number":1,"studentId":"14984","name":"นายคุณธรรม สวรรยาสุวรรณ","class":"ม.6/8","level":"ม.6"},{"number":2,"studentId":"14985","name":"นายฐปนวัชร แก้วชาลุน","class":"ม.6/8","level":"ม.6"},{"number":3,"studentId":"13302","name":"นายทองอินทร์ ดังสีสัตย์","class":"ม.6/8","level":"ม.6"},{"number":4,"studentId":"13338","name":"นายธีรเดช จำปาทุม","class":"ม.6/8","level":"ม.6"},{"number":5,"studentId":"13343","name":"นายอชิรชญา บัวสาย","class":"ม.6/8","level":"ม.6"},{"number":6,"studentId":"14986","name":"นายอภิสิทธิ์ คล้ายสูงเนิน","class":"ม.6/8","level":"ม.6"},{"number":7,"studentId":"13238","name":"นางสาวขวัญจิรา ตาลประเสริฐ","class":"ม.6/8","level":"ม.6"},{"number":8,"studentId":"13165","name":"นางสาวคุนัญญา แสนคำ","class":"ม.6/8","level":"ม.6"},{"number":9,"studentId":"13100","name":"นางสาวดวงพร คำดี","class":"ม.6/8","level":"ม.6"},{"number":10,"studentId":"13349","name":"นางสาวปภาวรินทร์ กวงฮางฮอง","class":"ม.6/8","level":"ม.6"},{"number":11,"studentId":"13350","name":"นางสาวปราชญาพร​ ดวงโพน","class":"ม.6/8","level":"ม.6"},{"number":12,"studentId":"13355","name":"นางสาวพรนัชชา ไชยกา","class":"ม.6/8","level":"ม.6"},{"number":13,"studentId":"13385","name":"นางสาวพัชรพร มหาวงศ์","class":"ม.6/8","level":"ม.6"},{"number":14,"studentId":"13323","name":"นางสาวพัชริกา รักษ์มณี","class":"ม.6/8","level":"ม.6"},{"number":15,"studentId":"13283","name":"นางสาวพัณณิตา วดีศิริศักดิ์","class":"ม.6/8","level":"ม.6"},{"number":16,"studentId":"14989","name":"นางสาวพิชญาพร สุภาพันธ์","class":"ม.6/8","level":"ม.6"},{"number":17,"studentId":"14990","name":"นางสาวพิมพ์ชนก มันอาษา","class":"ม.6/8","level":"ม.6"},{"number":18,"studentId":"13285","name":"นางสาวภัทรวดี ชัยสุระ","class":"ม.6/8","level":"ม.6"},{"number":19,"studentId":"14501","name":"นางสาววชิรญาณ์ สุขเกิดผล","class":"ม.6/8","level":"ม.6"},{"number":20,"studentId":"13179","name":"นางสาวศศิวิมล สุนารักษ์","class":"ม.6/8","level":"ม.6"},{"number":21,"studentId":"14991","name":"นางสาวสาธินี เสนพันธ์","class":"ม.6/8","level":"ม.6"},{"number":22,"studentId":"13363","name":"นางสาวสุทธิดา ลำมะสะ","class":"ม.6/8","level":"ม.6"},{"number":23,"studentId":"13328","name":"นางสาวสุธาสินี บุพศิริ","class":"ม.6/8","level":"ม.6"},{"number":24,"studentId":"13217","name":"นางสาวอรสินี เกษมสินธ์","class":"ม.6/8","level":"ม.6"},{"number":25,"studentId":"14992","name":"นางสาวอิงฟ้า อุปศรี","class":"ม.6/8","level":"ม.6"},{"number":1,"studentId":"13365","name":"นายเกล้ามงคล เสริมเจริญกิจ","class":"ม.6/9","level":"ม.6"},{"number":2,"studentId":"14993","name":"นายชนกันต์ แสงชาติ","class":"ม.6/9","level":"ม.6"},{"number":3,"studentId":"14994","name":"นายชวัลวิทย์ เพชรตระกูลเจริญ","class":"ม.6/9","level":"ม.6"},{"number":4,"studentId":"14996","name":"นายนัฐชัย สอนยศ","class":"ม.6/9","level":"ม.6"},{"number":5,"studentId":"13376","name":"นายวชิรพล ชาดีกรณ์","class":"ม.6/9","level":"ม.6"},{"number":6,"studentId":"13377","name":"นายวีรวุฒิ คะแก้ว","class":"ม.6/9","level":"ม.6"},{"number":7,"studentId":"15517","name":"นายฮว่างอัน  อินทรักษ์","class":"ม.6/9","level":"ม.6"},{"number":8,"studentId":"14997","name":"นางสาวขวัญจิรา ครุณะวงศ์","class":"ม.6/9","level":"ม.6"},{"number":9,"studentId":"13379","name":"นางสาวจานิน ภูคะฮาด","class":"ม.6/9","level":"ม.6"},{"number":10,"studentId":"13241","name":"นางสาวชลธิชา แสนไชย","class":"ม.6/9","level":"ม.6"},{"number":11,"studentId":"13380","name":"นางสาวชุติกาญจน์ จงรู้รอบ","class":"ม.6/9","level":"ม.6"},{"number":12,"studentId":"13381","name":"นางสาวณัชชา ติยะบุตร","class":"ม.6/9","level":"ม.6"},{"number":13,"studentId":"13382","name":"นางสาวณัฐธิชา  โถวิเชียร","class":"ม.6/9","level":"ม.6"},{"number":14,"studentId":"13347","name":"นางสาวณัฐนิชา มัยวงศ์","class":"ม.6/9","level":"ม.6"},{"number":15,"studentId":"13276","name":"นางสาวดารินทร์ ไชยอินทร์","class":"ม.6/9","level":"ม.6"},{"number":16,"studentId":"13318","name":"นางสาวธัญสินีนาฏ วงษ์จันทร์","class":"ม.6/9","level":"ม.6"},{"number":17,"studentId":"13383","name":"นางสาวนันณภัชสรณ์ บุพศิริ","class":"ม.6/9","level":"ม.6"},{"number":18,"studentId":"13384","name":"นางสาวนามีน เสือช้าง","class":"ม.6/9","level":"ม.6"},{"number":19,"studentId":"13104","name":"นางสาวปนัดดา คำสงค์","class":"ม.6/9","level":"ม.6"},{"number":20,"studentId":"13386","name":"นางสาวพัทธีรา สำราญเนตร","class":"ม.6/9","level":"ม.6"},{"number":21,"studentId":"13387","name":"นางสาวพิชญาภา เรือนแสน","class":"ม.6/9","level":"ม.6"},{"number":22,"studentId":"13390","name":"นางสาววชิรญาณ์ เภตรา","class":"ม.6/9","level":"ม.6"},{"number":23,"studentId":"14998","name":"นางสาววรัทยา ศิริวงค์","class":"ม.6/9","level":"ม.6"},{"number":24,"studentId":"13391","name":"นางสาววรินยุพา ปะนูวี","class":"ม.6/9","level":"ม.6"},{"number":25,"studentId":"13361","name":"นางสาววาสนา คัณทักษ์","class":"ม.6/9","level":"ม.6"},{"number":26,"studentId":"14999","name":"นางสาวสิรภัทร ศรีโสภา","class":"ม.6/9","level":"ม.6"},{"number":27,"studentId":"14944","name":"นางสาวสุพัตรา คำวิจิตร","class":"ม.6/9","level":"ม.6"},{"number":28,"studentId":"13085","name":"นางสาวสุพิญญา ป้องทอง","class":"ม.6/9","level":"ม.6"},{"number":29,"studentId":"13395","name":"นางสาวสุภจิรา สมรฤทธิ์","class":"ม.6/9","level":"ม.6"},{"number":30,"studentId":"13397","name":"นางสาวอนันตญา ทีเหง้า","class":"ม.6/9","level":"ม.6"},{"number":31,"studentId":"13398","name":"นางสาวอภิรญา ปรกสันเทียะ","class":"ม.6/9","level":"ม.6"},{"number":32,"studentId":"13253","name":"นางสาวอมลวรรณ ป้องทอง","class":"ม.6/9","level":"ม.6"},{"number":33,"studentId":"13513","name":"นางสาวอรจิรา โป๊แช","class":"ม.6/9","level":"ม.6"},{"number":34,"studentId":"13400","name":"นางสาวไอริณ ช่อทิพฤกษ์","class":"ม.6/9","level":"ม.6"}];
+
+// ===== EMBEDDED EXAM QUESTIONS DATA =====
+const EXAM_QUESTIONS_DATA = [
+  {
+    info: { subject:'ภาษาอังกฤษ', examType:'A-Level', description:'Reading Comprehension + Conversation', duration:60, maxScore:13 },
+    questions: [
+      { order:1, text:'What is the primary purpose of the passage?', type:'choice', passage:'Directions: Read the passage below and answer the questions that follow (Items 1–5).\n\nIn recent years, the educational landscape has witnessed a significant paradigm shift with the integration of Artificial Intelligence (AI) in classrooms. Proponents argue that AI-driven software can personalize learning by adapting to each student\'s pace and style, thereby narrowing achievement gaps. For instance, intelligent tutoring systems can provide instantaneous feedback, allowing learners to correct misconceptions in real-time. This digital transformation not only alleviates the administrative burden on educators but also fosters a more interactive learning environment.\n\nHowever, critics raise valid concerns regarding the over-reliance on technology, warning that it may inadvertently diminish crucial human elements in education. Emotional intelligence, empathy, and social collaboration are qualities that algorithm-driven machines cannot replicate. Furthermore, there is a growing apprehension about data privacy and the socioeconomic disparity exacerbated by unequal access to such cutting-edge tools. If schools in underprivileged areas cannot afford these technologies, the digital divide will only widen. Therefore, a balanced approach—where AI serves as a complement to, rather than a replacement for, human teachers—is imperative for sustainable educational development.', choices:['To advocate for the complete replacement of teachers with AI technology.','To analyze both the benefits and potential drawbacks of AI in education.','To criticize schools that refuse to adopt digital learning software.','To provide evidence that data privacy is the only major concern regarding AI.'], correctAnswer:'ข', maxScore:1 },
+      { order:2, text:'According to the passage, how can AI-driven software narrow achievement gaps?', type:'choice', passage:'Directions: Read the passage below and answer the questions that follow (Items 1–5).\n\nIn recent years, the educational landscape has witnessed a significant paradigm shift with the integration of Artificial Intelligence (AI) in classrooms. Proponents argue that AI-driven software can personalize learning by adapting to each student\'s pace and style, thereby narrowing achievement gaps. For instance, intelligent tutoring systems can provide instantaneous feedback, allowing learners to correct misconceptions in real-time. This digital transformation not only alleviates the administrative burden on educators but also fosters a more interactive learning environment.\n\nHowever, critics raise valid concerns regarding the over-reliance on technology, warning that it may inadvertently diminish crucial human elements in education. Emotional intelligence, empathy, and social collaboration are qualities that algorithm-driven machines cannot replicate. Furthermore, there is a growing apprehension about data privacy and the socioeconomic disparity exacerbated by unequal access to such cutting-edge tools. If schools in underprivileged areas cannot afford these technologies, the digital divide will only widen. Therefore, a balanced approach—where AI serves as a complement to, rather than a replacement for, human teachers—is imperative for sustainable educational development.', choices:['By reducing the overall cost of schooling for underprivileged areas.','By replacing human interaction during group collaborations.','By adapting to individual learning paces and providing instant feedback.','By eliminating all administrative responsibilities from teachers completely.'], correctAnswer:'ค', maxScore:1 },
+      { order:3, text:"The word 'apprehension' in paragraph 2 is closest in meaning to __________.", type:'choice', passage:'Directions: Read the passage below and answer the questions that follow (Items 1–5).\n\nIn recent years, the educational landscape has witnessed a significant paradigm shift with the integration of Artificial Intelligence (AI) in classrooms. Proponents argue that AI-driven software can personalize learning by adapting to each student\'s pace and style, thereby narrowing achievement gaps. For instance, intelligent tutoring systems can provide instantaneous feedback, allowing learners to correct misconceptions in real-time. This digital transformation not only alleviates the administrative burden on educators but also fosters a more interactive learning environment.\n\nHowever, critics raise valid concerns regarding the over-reliance on technology, warning that it may inadvertently diminish crucial human elements in education. Emotional intelligence, empathy, and social collaboration are qualities that algorithm-driven machines cannot replicate. Furthermore, there is a growing apprehension about data privacy and the socioeconomic disparity exacerbated by unequal access to such cutting-edge tools. If schools in underprivileged areas cannot afford these technologies, the digital divide will only widen. Therefore, a balanced approach—where AI serves as a complement to, rather than a replacement for, human teachers—is imperative for sustainable educational development.', choices:['excitement','indifference','conviction','anxiety'], correctAnswer:'ง', maxScore:1 },
+      { order:4, text:'Which of the following traits is mentioned as an exclusive human quality that machines cannot replicate?', type:'choice', passage:'Directions: Read the passage below and answer the questions that follow (Items 1–5).\n\nIn recent years, the educational landscape has witnessed a significant paradigm shift with the integration of Artificial Intelligence (AI) in classrooms. Proponents argue that AI-driven software can personalize learning by adapting to each student\'s pace and style, thereby narrowing achievement gaps. For instance, intelligent tutoring systems can provide instantaneous feedback, allowing learners to correct misconceptions in real-time. This digital transformation not only alleviates the administrative burden on educators but also fosters a more interactive learning environment.\n\nHowever, critics raise valid concerns regarding the over-reliance on technology, warning that it may inadvertently diminish crucial human elements in education. Emotional intelligence, empathy, and social collaboration are qualities that algorithm-driven machines cannot replicate. Furthermore, there is a growing apprehension about data privacy and the socioeconomic disparity exacerbated by unequal access to such cutting-edge tools. If schools in underprivileged areas cannot afford these technologies, the digital divide will only widen. Therefore, a balanced approach—where AI serves as a complement to, rather than a replacement for, human teachers—is imperative for sustainable educational development.', choices:['Data privacy management','Emotional intelligence','Rapid feedback delivery','Personalized academic pace'], correctAnswer:'ข', maxScore:1 },
+      { order:5, text:"What is the author's tone toward the future of AI in education?", type:'choice', passage:'Directions: Read the passage below and answer the questions that follow (Items 1–5).\n\nIn recent years, the educational landscape has witnessed a significant paradigm shift with the integration of Artificial Intelligence (AI) in classrooms. Proponents argue that AI-driven software can personalize learning by adapting to each student\'s pace and style, thereby narrowing achievement gaps. For instance, intelligent tutoring systems can provide instantaneous feedback, allowing learners to correct misconceptions in real-time. This digital transformation not only alleviates the administrative burden on educators but also fosters a more interactive learning environment.\n\nHowever, critics raise valid concerns regarding the over-reliance on technology, warning that it may inadvertently diminish crucial human elements in education. Emotional intelligence, empathy, and social collaboration are qualities that algorithm-driven machines cannot replicate. Furthermore, there is a growing apprehension about data privacy and the socioeconomic disparity exacerbated by unequal access to such cutting-edge tools. If schools in underprivileged areas cannot afford these technologies, the digital divide will only widen. Therefore, a balanced approach—where AI serves as a complement to, rather than a replacement for, human teachers—is imperative for sustainable educational development.', choices:['Cynical and dismissive','Highly enthusiastic and uncritical','Balanced and cautious','Indifferent and neutral'], correctAnswer:'ค', maxScore:1 },
+      { order:6, text:'Ted: "What\'s the matter? It\'s not a \'good\' morning for you?"\nSam: __________ (1)', type:'choice', passage:'Part I: Short Conversation\nConversation 1\n\nTed  :  Good morning, Sam. How are you doing?\nSam  :  Uh, yeah...not really feeling okay, Ted.\nTed  :  What\'s the matter? It\'s not a "good" morning for you?\nSam  :  _________(1)_________.\nTed  :  Why?\nSam  :  _________(2)_________.\nTed  :  Huh? You didn\'t sleep at all?\nSam  :  _________(3)_________.\nTed  :  I have that sometimes, too. Maybe it was something you ate last night.\nSam  :  _________(4)_________.', choices:["No, I had a bad night's sleep.",'No, I like mornings.','Yes, I fell asleep late.','Yes, I woke up too early.'], correctAnswer:'ก', maxScore:1 },
+      { order:7, text:'Ted: "Why?"\nSam: __________ (2)', type:'choice', passage:'Part I: Short Conversation\nConversation 1\n\nTed  :  Good morning, Sam. How are you doing?\nSam  :  Uh, yeah...not really feeling okay, Ted.\nTed  :  What\'s the matter? It\'s not a "good" morning for you?\nSam  :  _________(1)_________.\nTed  :  Why?\nSam  :  _________(2)_________.\nTed  :  Huh? You didn\'t sleep at all?\nSam  :  _________(3)_________.\nTed  :  I have that sometimes, too. Maybe it was something you ate last night.\nSam  :  _________(4)_________.', choices:['I listened to five ghost podcasts all night.',"I didn't set my alarm last night.",'My homework last night was easy, so I finished early.','The internet in my house went off, so I watched TV a bit.'], correctAnswer:'ก', maxScore:1 },
+      { order:8, text:'Ted: "Huh? You didn\'t sleep at all?"\nSam: __________ (3)', type:'choice', passage:'Part I: Short Conversation\nConversation 1\n\nTed  :  Good morning, Sam. How are you doing?\nSam  :  Uh, yeah...not really feeling okay, Ted.\nTed  :  What\'s the matter? It\'s not a "good" morning for you?\nSam  :  _________(1)_________.\nTed  :  Why?\nSam  :  _________(2)_________.\nTed  :  Huh? You didn\'t sleep at all?\nSam  :  _________(3)_________.\nTed  :  I have that sometimes, too. Maybe it was something you ate last night.\nSam  :  _________(4)_________.', choices:['I did. The mosquitoes in my room kept buzzing in my ear.','Well, I did kind of sleep. They were like a bunch of nightmares.','Nope. The cats outside my house were fighting the whole night.','Not really. My dreams were so good that I didn\'t want to wake up.'], correctAnswer:'ข', maxScore:1 },
+      { order:9, text:'Ted: "I have that sometimes, too. Maybe it was something you ate last night."\nSam: __________ (4)', type:'choice', passage:'Part I: Short Conversation\nConversation 1\n\nTed  :  Good morning, Sam. How are you doing?\nSam  :  Uh, yeah...not really feeling okay, Ted.\nTed  :  What\'s the matter? It\'s not a "good" morning for you?\nSam  :  _________(1)_________.\nTed  :  Why?\nSam  :  _________(2)_________.\nTed  :  Huh? You didn\'t sleep at all?\nSam  :  _________(3)_________.\nTed  :  I have that sometimes, too. Maybe it was something you ate last night.\nSam  :  _________(4)_________.', choices:['Yes, I had a good dinner, thanks. I got tired and fell asleep right away.','Yes, as usual I was working on a lot of homework and completely skipped dinner.','No, I think the last time I ate something really good was when I was a little kid.','No, I forgot to take my ear-pods out and heard screams and spooky music all night.'], correctAnswer:'ง', maxScore:1 },
+      { order:10, text:'Teacher: "OK, for homework, please go online and find five more interesting facts about the human brain. Next class, we\'ll share them in groups and work on presentations."\nStudent: __________ (9)', type:'choice', passage:'Part II: Short Conversation\nConversation 3\nSituation: At the end of a biology class\n\nTeacher: OK, for homework, please go online and find five more interesting facts about the human brain. Next class, we\'ll share them in groups and work on presentations.\nStudent: _________(9)_________.\nTeacher: Sure. And if you find a short VDO clip, you can use that, too.\nStudent: _________(10)_________.\nTeacher: Well, if it helps to point out some facts about the brain, I guess that\'s OK, too. _________(11)_________.\nStudent: You know, Teacher, this class is turning out to be a lot of fun.\nTeacher: Really? _________(12)_________.', choices:['Is it ok if we take a break now?','Can I use slides for this assignment?','Will you give us the correct answers next week?','Should we answer the questions in complete sentences?'], correctAnswer:'ข', maxScore:1 },
+      { order:11, text:'Teacher: "Sure. And if you find a short VDO clip, you can use that, too."\nStudent: __________ (10)', type:'choice', passage:'Part II: Short Conversation\nConversation 3\nSituation: At the end of a biology class\n\nTeacher: OK, for homework, please go online and find five more interesting facts about the human brain. Next class, we\'ll share them in groups and work on presentations.\nStudent: _________(9)_________.\nTeacher: Sure. And if you find a short VDO clip, you can use that, too.\nStudent: _________(10)_________.\nTeacher: Well, if it helps to point out some facts about the brain, I guess that\'s OK, too. _________(11)_________.\nStudent: You know, Teacher, this class is turning out to be a lot of fun.\nTeacher: Really? _________(12)_________.', choices:['How long should we make our VDO?','Can I use something funny from TikTok?','For the presentations, does everybody have to speak?','If our group doesn\'t use clips, will we get a lower score?'], correctAnswer:'ข', maxScore:1 },
+      { order:12, text:'Teacher: "Well, if it helps to point out some facts about the brain, I guess that\'s OK, too. __________ (11)"', type:'choice', passage:'Part II: Short Conversation\nConversation 3\nSituation: At the end of a biology class\n\nTeacher: OK, for homework, please go online and find five more interesting facts about the human brain. Next class, we\'ll share them in groups and work on presentations.\nStudent: _________(9)_________.\nTeacher: Sure. And if you find a short VDO clip, you can use that, too.\nStudent: _________(10)_________.\nTeacher: Well, if it helps to point out some facts about the brain, I guess that\'s OK, too. _________(11)_________.\nStudent: You know, Teacher, this class is turning out to be a lot of fun.\nTeacher: Really? _________(12)_________.', choices:["I don't even mind if it's a cartoon, but the information must be true.",'I want you to have fun above all, not really to learn anything special.','Spend some time looking for information, even if it is obviously false.',"Remember: many websites are fake. They're just trying to scam you out of money."], correctAnswer:'ก', maxScore:1 },
+      { order:13, text:'Student: "You know, Teacher, this class is turning out to be a lot of fun."\nTeacher: "Really? __________ (12)"', type:'choice', passage:'Part II: Short Conversation\nConversation 3\nSituation: At the end of a biology class\n\nTeacher: OK, for homework, please go online and find five more interesting facts about the human brain. Next class, we\'ll share them in groups and work on presentations.\nStudent: _________(9)_________.\nTeacher: Sure. And if you find a short VDO clip, you can use that, too.\nStudent: _________(10)_________.\nTeacher: Well, if it helps to point out some facts about the brain, I guess that\'s OK, too. _________(11)_________.\nStudent: You know, Teacher, this class is turning out to be a lot of fun.\nTeacher: Really? _________(12)_________.', choices:['I agree. Learning is funny.','I think you need to improve your attitude.',"I'm happy to hear that. I want you to enjoy learning.",'Thanks for letting me know. Maybe other students have the same complaint.'], correctAnswer:'ค', maxScore:1 }
+    ]
+  },
+  {
+    info: { subject:'คณิตศาสตร์ประยุกต์', examType:'A-Level', description:'คณิตศาสตร์ประยุกต์ A-Level', duration:60, maxScore:5 },
+    questions: [
+      { order:1, text:'กำหนดให้ A = {0, 1, 2} แล้วเซต P(P(A)) มีสมาชิกกี่ตัว', type:'choice', choices:['16','64','128','256','512'], correctAnswer:'ง', maxScore:1 },
+      { order:2, text:'ให้ p, q และ r เป็นประพจน์ แล้วประพจน์ใดต่อไปนี้มีค่าความจริงเป็นจริงในบางกรณีและเป็นเท็จในบางกรณี', type:'choice', choices:['(p ∧ ~p) → (q ∨ r)','(p ∨ ~p) → (r ∨ ~r)','(p → q) ∧ (p ∧ ~q)','(p ∧ q) ∨ (~p ∧ r)','(p ∧ ~p) ∧ (q ∨ ~q)'], correctAnswer:'ง', maxScore:1 },
+      { order:3, text:'กำหนดให้ f(x) และ g(x) เป็นพหุนามดีกรี 4 ที่ทำให้ f(3) = 4 และ g(3) = −3 แล้วพหุนามในข้อใดต่อไปนี้หารด้วย (x − 3) ลงตัว', type:'choice', choices:['f(x) + g(x) − 2x','f(x)·g(x) + x','f(x) − g(x) + x²','x·f(x) + g(x)','f(x)·g(x) + x² − 3'], correctAnswer:'จ', maxScore:1 },
+      { order:4, text:'พิจารณาอสมการ x² − 8x + 7 < 0 ถ้า a เป็นจำนวนเต็มที่น้อยที่สุดที่สอดคล้องกับอสมการ และ b เป็นจำนวนเต็มที่มากที่สุดที่สอดคล้องกับอสมการ แล้วระยะห่างที่น้อยที่สุดระหว่างจำนวนเต็มบวกและจำนวนเต็มลบที่เป็นคำตอบของ |x − a| ≥ b เท่ากับเท่าใด', type:'choice', choices:['8','10','12','14','16'], correctAnswer:'ค', maxScore:1 },
+      { order:5, text:'กำหนดให้ A, B, C เป็นเซต โดยที่ n(A) = 60, n(A ∩ B) = 22, n(A ∩ C) = 19 และ n(A ∩ B ∩ C) = 8 จงหาจำนวนสมาชิกของเซต A − (B ∪ C)', type:'choice', choices:['19','22','25','27','33'], correctAnswer:'ง', maxScore:1 }
+    ]
+  },
+  {
+    info: { subject:'ชีววิทยา', examType:'A-Level', description:'ชีววิทยา A-Level', duration:60, maxScore:5 },
+    questions: [
+      { order:1, text:'พิจารณาข้อความเกี่ยวกับโมเลกุลของน้ำ\nก. ค่า electronegativity ที่แตกต่างกันของอะตอม O และ H มีอิทธิพลต่อการเกิดสภาพขั้วของโมเลกุลน้ำ\nข. โมเลกุลน้ำเกิดจากอะตอม H และ O เชื่อมต่อกันด้วยพันธะไฮโดรเจน\nค. โมเลกุลน้ำจะหันด้านที่มีขั้วลบเข้าหาไอออนบวกที่ได้จากการแตกตัวของ NaCl เมื่อละลายน้ำ\nง. เมื่อน้ำอยู่ในสถานะของเหลวจะเกิดพันธะโคเวเลนต์ขึ้นระหว่างโมเลกุลน้ำ\nข้อใดถูกต้อง', type:'choice', choices:['ก. และ ข. เท่านั้น','ก. และ ค. เท่านั้น','ข. และ ค. เท่านั้น','ข. และ ง. เท่านั้น','ค. และ ง. เท่านั้น'], correctAnswer:'ข', maxScore:1 },
+      { order:2, text:'พิจารณาข้อความเกี่ยวกับสารประกอบคาร์โบไฮเดรต\nก. กลูโคสเป็นสารประกอบคาร์โบไฮเดรตที่เป็นองค์ประกอบสำคัญของสารพันธุกรรม\nข. เซลล์สิ่งมีชีวิตนำไดแซ็กคาไรด์เข้าสู่เซลล์เพื่อใช้เป็นสารตั้งต้นในการผลิตพลังงาน\nค. ผนังเซลล์ของพืชมีองค์ประกอบสำคัญเป็นสารประกอบประเภทคาร์โบไฮเดรต\nง. พอลิแซ็กคาไรด์ประกอบด้วยหน่วยย่อยที่เชื่อมต่อกันด้วยพันธะไกลโคซิดิก\nข้อใดถูกต้อง', type:'choice', choices:['ก. และ ข. เท่านั้น','ก. และ ค. เท่านั้น','ข. และ ค. เท่านั้น','ข. และ ง. เท่านั้น','ค. และ ง. เท่านั้น'], correctAnswer:'จ', maxScore:1 },
+      { order:3, text:'พิจารณาภาพและข้อความเกี่ยวกับสารชีวโมเลกุล\nก. พอลิเมอร์ของโมเลกุลในภาพเกิดจากการเชื่อมต่อกันระหว่างตำแหน่ง C กับตำแหน่ง D ของโมเลกุลถัดไป\nข. ตำแหน่ง B แสดงให้เห็นว่าโมเลกุลในภาพเป็นองค์ประกอบของสายดีเอ็นเอ\nค. พอลิเมอร์ของโมเลกุลในภาพเรียกว่า พอลิเพปไทด์\nง. ตำแหน่ง A มีอะตอมไนโตรเจนเป็นองค์ประกอบ\nข้อใดถูกต้อง', type:'choice', imageUrl:'./img/รูปภาพเคมีข้อ 3.png', choices:['ก. และ ค. เท่านั้น','ก. และ ง. เท่านั้น','ข. และ ค. เท่านั้น','ข. และ ง. เท่านั้น','ค. และ ง. เท่านั้น'], correctAnswer:'ข', maxScore:1 },
+      { order:4, text:'หากนำเซลล์ประสาทมาแช่ในสารละลาย Tetraethylammonium (TEA) ซึ่งยับยั้งการทำงานของ Voltage-gated K⁺ channel เมื่อกระตุ้นเซลล์จนเกิดแอกชันโพเทนเชียล ระยะใดในกราฟจะได้รับผลกระทบมากที่สุด', type:'choice', imageUrl:'./img/รูปภาพเคมีข้อ 4.png', choices:['ระยะ A และ D','ระยะ C และ E','ระยะ B และ C','ระยะ B เท่านั้น'], correctAnswer:'ข', maxScore:1 },
+      { order:5, text:'ยาชาเฉพาะที่ เช่น Lidocaine ออกฤทธิ์โดยการจับกับช่อง Na⁺ ที่เปิด-ปิดด้วยแรงดันไฟฟ้า ป้องกันไม่ให้ไอออนผ่านได้ ผลการทดลองวัดค่าศักย์ไฟฟ้าจะเป็นอย่างไรเมื่อฉีด Lidocaine แล้วกระตุ้นด้วยความแรงเหนือระดับ Threshold', type:'choice', imageUrl:'./img/รูปภาพเคมีข้อ 5.png', choices:['เกิดเฉพาะระยะ B แต่ไม่เกิดระยะ C','กราฟเกิดระยะ B และ C ตามปกติ แต่มีความเร็วลดลง','ระยะ E จะมีความลึกมากกว่าปกติ (More negative)','ศักย์ไฟฟ้าคงอยู่ที่ระยะ A และไม่สามารถเกิดระยะ B ได้'], correctAnswer:'ง', maxScore:1 }
+    ]
+  },
+  {
+    info: { subject:'เคมี', examType:'A-Level', description:'เคมี A-Level', duration:60, maxScore:5 },
+    questions: [
+      { order:1, text:'ธาตุ A มีการจัดเรียงอิเล็กตรอนเป็น 1s²2s²2p⁶3s²3p⁶4s¹ ข้อใดไม่ถูกต้อง', type:'choice', choices:['ธาตุ A เป็นโลหะแอลคาไล','ธาตุ A มีจำนวนเวเลนซ์อิเล็กตรอนเท่ากับ 1','ไอออนที่เสถียรของธาตุ A เกิดจากการรับหนึ่งอิเล็กตรอน','ธาตุ A มีจำนวนโปรตอนเท่ากับไอออนที่เสถียรของธาตุ A','การจัดเรียงอิเล็กตรอนของธาตุ A เขียนได้อีกแบบเป็น [Ar]4s¹'], correctAnswer:'ค', maxScore:1 },
+      { order:2, text:'แฮฟเนีย (HfO₂) เป็นสารประกอบไอออนิกที่ใช้ผลิตชิปคอมพิวเตอร์ ข้อใดคือจำนวนอิเล็กตรอนในระดับพลังงาน n = 5 ของ Hf ในสารประกอบ HfO₂', type:'choice', choices:['0','2','8','14','18'], correctAnswer:'ค', maxScore:1 },
+      { order:3, text:'พิจารณาข้อความสำหรับธาตุในคาบที่ 1 ถึง 5\nก. ธาตุแทรนซิชันทุกชนิดเป็นโลหะ\nข. ธาตุกึ่งโลหะทุกชนิดจัดเป็นธาตุกลุ่ม p\nค. หมู่ VIIIA เป็นหมู่เดียวที่ธาตุสมาชิกทุกชนิดเป็นอโลหะ\nง. ธาตุหมู่ IA, IIA และ IIIA ในคาบที่ 2 ถึง 5 เป็นโลหะทั้งหมด\nข้อใดถูกต้อง', type:'choice', choices:['ก. และ ข. เท่านั้น','ข. และ ง. เท่านั้น','ค. และ ง. เท่านั้น','ก. ข. และ ค. เท่านั้น','ก. ค. และ ง. เท่านั้น'], correctAnswer:'ง', maxScore:1 },
+      { order:4, text:'ข้อใดไม่ถูกต้อง', type:'choice', choices:['การจัดเรียงขนาด: ₃₈Sr²⁺ < ₃₇Rb⁺ < ₃₄Se²⁻ < ₃₈Sr','การจัดเรียงอิเล็กตรอนของ Mg ในสถานะพื้นคือ [Ne]3s²','ธาตุที่มีเวเลนซ์อิเล็กตรอนเป็น 1 หรือ 2 ได้แก่ ธาตุกลุ่ม s เท่านั้น','Mg ทำปฏิกิริยากับน้ำได้เร็วกว่า Zn โดยได้ผลิตภัณฑ์ที่มีคุณสมบัติเป็นเบส','ดิวทิเรียม (₁H²) 1 อะตอม ประกอบด้วย อิเล็กตรอน โปรตอน และนิวตรอน อย่างละ 1 อนุภาค'], correctAnswer:'ค', maxScore:1 },
+      { order:5, text:'4Au(s) + O₂(g) + 8S₂O₃²⁻(aq) + 2H₂O(l) → 4[Au(S₂O₃)₂]³⁻(aq) + 4OH⁻(aq)\nเมื่อนำทองคำตัวอย่างมวล 3.94 g (ทองคำร้อยละ 80 โดยมวล) ทำปฏิกิริยากับ O₂ 0.010 mol และ Na₂S₂O₃ 0.10 M ปริมาตร 200 mL ข้อใดเป็นสารกำหนดปริมาณ', type:'choice', choices:['Au','O₂','Na₂S₂O₃','H₂O','ข้อมูลไม่เพียงพอ'], correctAnswer:'ค', maxScore:1 }
+    ]
+  },
+  {
+    info: { subject:'ฟิสิกส์', examType:'A-Level', description:'ฟิสิกส์ A-Level', duration:60, maxScore:5 },
+    questions: [
+      { order:1, text:'อนุภาคหนึ่งเคลื่อนที่ในแนวตรงจากหยุดนิ่งด้วยความเร่งคงตัว 4.5 เมตรต่อวินาที² เป็นเวลา 4.0 วินาที หลังจากนั้นเคลื่อนที่ด้วยความเร็วคงตัวอีก 1.0 วินาที ระยะทางทั้งหมดที่อนุภาคเคลื่อนที่ได้เป็นกี่เมตร', type:'choice', choices:['18 เมตร','36 เมตร','54 เมตร','72 เมตร','90 เมตร'], correctAnswer:'ค', maxScore:1 },
+      { order:2, text:'โลกมวล M รัศมี R มีขนาดสนามโน้มถ่วงเท่ากับ g ถ้าดาวเคราะห์ดวงหนึ่งมีมวล 75M และรัศมี 5R จงหาขนาดสนามโน้มถ่วงของดาวเคราะห์ดวงนี้', type:'choice', choices:['3g','5g','9g','13g','15g'], correctAnswer:'ก', maxScore:1 },
+      { order:3, text:'กล่องใบหนึ่งมีมวล 500 กรัม วางอยู่บนพื้นราบและมีแรงกระทำดังภาพ\nกำหนดให้: สัมประสิทธิ์ความเสียดทานสถิต = 0.3, สัมประสิทธิ์ความเสียดทานจลน์ = 0.2, g = 9.8 N/kg\nความเร่งของกล่องมีขนาดกี่เมตรต่อวินาที²', type:'choice', imageUrl:'./img/รูปฟิสิกข้อ 3.PNG', choices:['0 m/s²','0.80 m/s²','1.46 m/s²','2.00 m/s²','2.44 m/s²'], correctAnswer:'ง', maxScore:1 },
+      { order:4, text:'ท่อนไม้ขนาดสม่ำเสมอยาว 20.0 ซม. มีจุดหมุนอยู่ตรงกลาง ออกแรงกด F₁ = 5 N ที่ x = 0 ซม. และแรงกด F₂ = 3 N ที่ x = 4.0 ซม. ดังภาพ จะต้องออกแรงกด F₃ = 8 N ที่ตำแหน่งใดจึงจะทำให้ท่อนไม้ไม่หมุน', type:'choice', imageUrl:'./img/รูปฟิสิกข้อ 4.PNG', choices:['6.5 ซม.','8.5 ซม.','16.5 ซม.','17.8 ซม.','18.5 ซม.'], correctAnswer:'จ', maxScore:1 },
+      { order:5, text:'วัตถุมวล 2.5 กิโลกรัม เคลื่อนที่ไปทางขวาบนพื้นระดับลื่นด้วยความเร็ว 6.0 m/s ถ้ามีแรงคงตัวขนาด 9.0 N ทิศทางซ้าย กระทำต่อวัตถุเป็นระยะทาง 2.0 เมตร แล้วหยุดกระทำ พลังงานจลน์ของวัตถุหลังจากแรงหยุดกระทำมีค่ากี่จูล', type:'choice', choices:['5 จูล','15 จูล','27 จูล','36 จูล','45 จูล'], correctAnswer:'ค', maxScore:1 }
+    ]
+  }
+];
+
 // ===== STATE =====
 let allSubmissions = [], allStudents = [], allExams = [];
 let currentFilters = { type:'all', round:'all', status:'all' };
@@ -445,7 +622,7 @@ let currentGradeQuestions = [];
 let currentMainTab = 'submissions';
 
 // ===== LOGIN =====
-async function teacherLogin() {
+function teacherLogin() {
     const user = document.getElementById('tUser').value.trim();
     const pass = document.getElementById('tPass').value;
     const err  = document.getElementById('loginErr');
@@ -453,28 +630,13 @@ async function teacherLogin() {
 
     if (!user || !pass) { err.textContent = 'กรุณากรอกข้อมูลให้ครบถ้วน'; err.classList.remove('hidden'); return; }
 
-    try {
-        const snap = await db.collection('config').doc('teacher').get();
-        let valid = false;
-        if (snap.exists) {
-            const cfg = snap.data();
-            valid = (cfg.username === user || !cfg.username) && cfg.password === pass;
-        } else {
-            // Default credentials if config not set
-            valid = user === 'teacher' && pass === 'teacher1234';
-        }
-        if (valid) {
-            sessionStorage.setItem('teacher', user);
-            document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('mainDash').classList.remove('hidden');
-            loadAllData();
-        } else {
-            err.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
-            err.classList.remove('hidden');
-        }
-    } catch (e) {
-        console.error(e);
-        err.textContent = 'เชื่อมต่อฐานข้อมูลไม่ได้: ' + e.message;
+    if (user === 'admin' && pass === '012345') {
+        sessionStorage.setItem('teacher', user);
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('mainDash').classList.remove('hidden');
+        loadAllData();
+    } else {
+        err.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
         err.classList.remove('hidden');
     }
 }
@@ -618,8 +780,14 @@ async function openGradeModal(subId) {
     document.getElementById('gradeModal').classList.add('show');
 
     try {
-        const snap = await db.collection('questions').where('examId','==',sub.examId).orderBy('order').get();
-        currentGradeQuestions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Combined submission stores examIds[], single stores examId
+        const examIdList = sub.examIds || [sub.examId];
+        const allQDocs = [];
+        for (const eid of examIdList) {
+            const snap = await db.collection('questions').where('examId','==',eid).get();
+            allQDocs.push(...snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }
+        currentGradeQuestions = allQDocs;
         renderGradeBody(sub);
     } catch (e) {
         document.getElementById('gradeBody').innerHTML = `<p class="text-red-500 text-center py-6">โหลดคำถามไม่สำเร็จ: ${e.message}</p>`;
@@ -932,8 +1100,163 @@ function exportCSV() {
     a.click();
 }
 
+// ===== IMPORT STUDENTS =====
+let importStudentsData = [];
+
+function openImportStudents() {
+    document.getElementById('importStudentModal').classList.add('show');
+    document.getElementById('importProgress').classList.add('hidden');
+    document.getElementById('importErr').classList.add('hidden');
+    importStudentsData = STUDENTS_IMPORT_DATA;
+    const classes = {};
+    importStudentsData.forEach(s => { classes[s.class] = (classes[s.class] || 0) + 1; });
+    document.getElementById('importPreview').innerHTML = `
+        <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-3">
+            <p class="font-semibold text-green-700"><i class="fas fa-check-circle mr-1"></i>พบข้อมูลนักเรียน <strong>${importStudentsData.length}</strong> คน</p>
+            <p class="text-xs text-green-600 mt-1">จาก ${Object.keys(classes).length} ห้องเรียน (ห้องเรียนพิเศษ)</p>
+        </div>
+        <div class="text-xs text-gray-500 max-h-36 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-100">
+            ${Object.entries(classes).map(([c,n]) => `<div class="flex justify-between px-3 py-1"><span>${c}</span><span class="font-semibold text-gray-700">${n} คน</span></div>`).join('')}
+        </div>`;
+}
+
+function closeImportModal() {
+    document.getElementById('importStudentModal').classList.remove('show');
+    importStudentsData = [];
+}
+
+async function startImport() {
+    if (!importStudentsData.length) return;
+    const examType  = document.getElementById('import_type').value;
+    const subject   = document.getElementById('import_subject').value.trim();
+    const startBtn  = document.getElementById('importStartBtn');
+    const cancelBtn = document.getElementById('importCancelBtn');
+    startBtn.disabled  = true;
+    cancelBtn.disabled = true;
+    document.getElementById('importProgress').classList.remove('hidden');
+    document.getElementById('importErr').classList.add('hidden');
+
+    const total = importStudentsData.length;
+    let done = 0;
+    const BATCH_SIZE = 400;
+    try {
+        for (let i = 0; i < total; i += BATCH_SIZE) {
+            const chunk = importStudentsData.slice(i, i + BATCH_SIZE);
+            const batch = db.batch();
+            chunk.forEach(s => {
+                const ref = db.collection('students').doc(String(s.studentId));
+                batch.set(ref, { name: s.name, class: s.class, number: s.number, examType, subject }, { merge: true });
+            });
+            await batch.commit();
+            done += chunk.length;
+            const pct = Math.round(done / total * 100);
+            document.getElementById('importProgressText').textContent = `กำลังนำเข้า... ${done} / ${total} คน (${pct}%)`;
+            document.getElementById('importProgressBar').style.width = pct + '%';
+        }
+        const snap = await db.collection('students').orderBy('class').get();
+        allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderStudents();
+        startBtn.disabled  = false;
+        cancelBtn.disabled = false;
+        alert(`✅ นำเข้าสำเร็จ! ${total} คน อัพโหลดขึ้น Firebase แล้ว`);
+        closeImportModal();
+    } catch (e) {
+        const err = document.getElementById('importErr');
+        err.textContent = 'นำเข้าไม่สำเร็จ: ' + e.message;
+        err.classList.remove('hidden');
+        startBtn.disabled  = false;
+        cancelBtn.disabled = false;
+    }
+}
+
+// ===== IMPORT EXAM FUNCTIONS =====
+function openImportExam() {
+    document.getElementById('importExamModal').classList.add('show');
+    document.getElementById('examImportProgress').classList.add('hidden');
+    document.getElementById('examImportErr').classList.add('hidden');
+    document.getElementById('examImportStartBtn').disabled = false;
+    document.getElementById('examImportCancelBtn').disabled = false;
+    document.getElementById('examImportStartBtn').innerHTML = '<i class="fas fa-cloud-upload-alt mr-1.5"></i>นำเข้า Firebase';
+    document.getElementById('examImport_date').value = new Date().toISOString().split('T')[0];
+}
+
+function closeImportExamModal() {
+    document.getElementById('importExamModal').classList.remove('show');
+}
+
+async function startExamImport() {
+    const round = parseInt(document.getElementById('examImport_round').value) || 1;
+    const date = document.getElementById('examImport_date').value;
+    const startBtn = document.getElementById('examImportStartBtn');
+    const cancelBtn = document.getElementById('examImportCancelBtn');
+    const progress = document.getElementById('examImportProgress');
+    const progressText = document.getElementById('examImportProgressText');
+    const progressBar = document.getElementById('examImportProgressBar');
+    const errDiv = document.getElementById('examImportErr');
+
+    startBtn.disabled = true; cancelBtn.disabled = true;
+    progress.classList.remove('hidden');
+    errDiv.classList.add('hidden');
+    progressBar.style.width = '0%';
+
+    try {
+        // Step 0: ลบข้อสอบเก่า (รอบเดิม) ออกก่อน
+        progressText.textContent = 'ลบข้อสอบเก่าออก...';
+        const oldExams = await db.collection('exams').where('round','==',round).get();
+        for (const examDoc of oldExams.docs) {
+            const oldQs = await db.collection('questions').where('examId','==',examDoc.id).get();
+            if (oldQs.size > 0) {
+                const delBatch = db.batch();
+                oldQs.docs.forEach(d => delBatch.delete(d.ref));
+                await delBatch.commit();
+            }
+            await examDoc.ref.delete();
+        }
+
+        // Step 1: สร้างข้อสอบใหม่
+        const total = EXAM_QUESTIONS_DATA.length;
+        let totalQ = 0;
+        for (let i = 0; i < total; i++) {
+            const { info, questions } = EXAM_QUESTIONS_DATA[i];
+            progressText.textContent = `(${i+1}/${total}) สร้างข้อสอบ: ${info.subject}...`;
+            progressBar.style.width = `${10 + (i / total) * 85}%`;
+
+            const examRef = db.collection('exams').doc();
+            await examRef.set({
+                round, examType: info.examType, subject: info.subject,
+                date, isOpen: false, duration: info.duration,
+                description: info.description, maxScore: info.maxScore,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            const batch = db.batch();
+            questions.forEach(q => {
+                const qRef = db.collection('questions').doc();
+                const qData = { examId: examRef.id, order: q.order, text: q.text, type: q.type, choices: q.choices || [], correctAnswer: q.correctAnswer, maxScore: q.maxScore };
+                if (q.imageUrl) qData.imageUrl = q.imageUrl;
+                if (q.passage) qData.passage = q.passage;
+                batch.set(qRef, qData);
+            });
+            await batch.commit();
+            totalQ += questions.length;
+        }
+
+        progressBar.style.width = '100%';
+        progressText.textContent = `นำเข้าสำเร็จ! สร้าง ${total} วิชา ${totalQ} ข้อ`;
+        startBtn.innerHTML = '<i class="fas fa-check mr-1.5"></i>เสร็จแล้ว';
+        cancelBtn.disabled = false;
+        const examSnap = await db.collection('exams').where('round','==',round).get();
+        allExams = [...allExams.filter(e => e.round !== round), ...examSnap.docs.map(d => ({ id: d.id, ...d.data() }))];
+        renderExams();
+    } catch(e) {
+        errDiv.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+        errDiv.classList.remove('hidden');
+        startBtn.disabled = false; cancelBtn.disabled = false;
+    }
+}
+
 // ===== CLOSE MODALS ON BACKDROP =====
-['addStudentModal','addExamModal'].forEach(id => {
+['addStudentModal','addExamModal','importStudentModal','importExamModal'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => {
         if (e.target.id === id) e.target.classList.remove('show');
     });

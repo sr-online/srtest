@@ -3,12 +3,13 @@
 // ดูได้จาก Firebase Console > Project Settings > Your apps > Web
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyBUnxjIirdKBf9bUSXJr0KUebjLmwXBBHA",
+    authDomain: "srtest-1c774.firebaseapp.com",
+    projectId: "srtest-1c774",
+    storageBucket: "srtest-1c774.firebasestorage.app",
+    messagingSenderId: "171249788293",
+    appId: "1:171249788293:web:afa4e247bda3c8e14bd0ec",
+    measurementId: "G-ZJNHZJE5QS"
 };
 
 // Initialize Firebase

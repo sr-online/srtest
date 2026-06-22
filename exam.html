@@ -242,7 +242,18 @@
     </div>
 
     <!-- Question area -->
-    <div class="max-w-3xl mx-auto px-4 py-5">
+    <div id="examLayout" class="max-w-3xl mx-auto px-4 py-5">
+
+        <!-- Passage panel (shown on left for reading questions) -->
+        <div id="passagePanel" class="hidden w-5/12 flex-shrink-0">
+            <div class="bg-white rounded-2xl shadow-sm p-5 sticky top-20 overflow-y-auto" style="max-height:calc(100vh - 110px)">
+                <p class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3 pb-2 border-b border-blue-100"><i class="fas fa-book-open mr-1.5"></i>บทความ</p>
+                <div id="passageText" class="text-gray-700 text-sm leading-relaxed whitespace-pre-line"></div>
+            </div>
+        </div>
+
+        <!-- Question panel -->
+        <div id="questionPanel" class="flex-1 min-w-0">
         <div class="bg-white rounded-2xl shadow-sm p-5 mb-4" id="questionCard">
             <div class="flex items-start justify-between mb-4">
                 <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm font-bold" id="qLabel">ข้อที่ 1</span>
@@ -277,7 +288,8 @@
                 ถัดไป<i class="fas fa-arrow-right"></i>
             </button>
         </div>
-    </div>
+        </div><!-- end questionPanel -->
+    </div><!-- end examLayout -->
 </div>
 
 <!-- ===== SCRATCH PAPER PANEL ===== -->
@@ -376,9 +388,10 @@ const studentRaw = sessionStorage.getItem('student');
 if (!studentRaw) { window.location.href = 'index.html'; }
 const student = JSON.parse(studentRaw);
 
-const params = new URLSearchParams(window.location.search);
-const examId = params.get('examId') || sessionStorage.getItem('currentExamId');
-if (!examId) { window.location.href = 'student.html'; }
+const params    = new URLSearchParams(window.location.search);
+const examId    = params.get('examId') || sessionStorage.getItem('currentExamId');
+const roundParam = params.get('round');
+if (!examId && !roundParam) { window.location.href = 'student.html'; }
 
 // ===== STATE =====
 let examData    = null;
@@ -389,53 +402,143 @@ let currentIdx  = 0;
 let timerSec    = 0;
 let timerInterval = null;
 let startTime   = null;
-let examPhase   = 'description'; // description | exam | results
-let scratchOpen = false;
+let examPhase    = 'description'; // description | exam | results
+let scratchOpen  = false;
+let combinedMode = !!roundParam;
 
 // ===== CANVAS =====
 let canvas, ctx, isDrawing = false, lastX = 0, lastY = 0;
 let penColor = '#000000', penSize = 4, currentTool = 'pen';
 
+// ===== SUBJECT PRIORITY ORDER =====
+const SUBJECT_PRIORITY = ['ภาษาอังกฤษ','คณิตศาสตร์ประยุกต์','คณิตศาสตร์','ชีววิทยา','เคมี','ฟิสิกส์','สังคม','ภาษาไทย'];
+
+function fillDescPage(type, round, title, subject, duration, total, maxScore, desc) {
+    document.getElementById('dExamType').textContent = `${type} — ครั้งที่ ${round}`;
+    document.getElementById('dTitle').textContent    = title;
+    document.getElementById('dSubject').textContent  = subject;
+    document.getElementById('dDuration').textContent = duration;
+    document.getElementById('dTotal').textContent    = total;
+    document.getElementById('dMax').textContent      = maxScore;
+    document.getElementById('dDesc').innerHTML       = (desc || 'ไม่มีคำอธิบายเพิ่มเติม').replace(/\n/g,'<br>');
+}
+
 // ===== LOAD EXAM =====
 async function loadExam() {
     try {
-        const snap = await db.collection('exams').doc(examId).get();
-        if (!snap.exists) { alert('ไม่พบข้อสอบนี้'); history.back(); return; }
-        examData = { id: snap.id, ...snap.data() };
-
-        // Fill description page
-        document.getElementById('dExamType').textContent = `${examData.examType} — ครั้งที่ ${examData.round}`;
-        document.getElementById('dTitle').textContent    = `แบบทดสอบครั้งที่ ${examData.round}`;
-        document.getElementById('dSubject').textContent  = examData.subject || '';
-        document.getElementById('dDuration').textContent = examData.duration || 60;
-        document.getElementById('dTotal').textContent    = examData.totalQuestions || '?';
-        document.getElementById('dMax').textContent      = examData.maxScore || 100;
-        document.getElementById('dDesc').innerHTML       = (examData.description || 'ไม่มีคำอธิบายเพิ่มเติม').replace(/\n/g,'<br>');
-        document.getElementById('examTitle').textContent = `${examData.examType} ครั้งที่ ${examData.round} — ${examData.subject || ''}`;
-
-        timerSec = (examData.duration || 60) * 60;
-
-        // Load questions
-        const qSnap = await db.collection('questions').where('examId','==',examId).orderBy('order').get();
-        questions = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // Check if already submitted
-        const subSnap = await db.collection('submissions')
-            .where('studentId','==',student.id).where('examId','==',examId).limit(1).get();
-        if (!subSnap.empty) {
-            const sub = subSnap.docs[0].data();
-            alert('คุณได้ทดสอบข้อสอบนี้ไปแล้ว\nระบบจะพาคุณไปยังผลการสอบ');
-            showResults(sub, true);
-            return;
-        }
-
-        if (!examData.isOpen) {
-            alert('การทดสอบนี้ยังไม่เปิด กรุณาติดต่อครู');
-            window.location.href = 'student.html';
+        if (combinedMode) {
+            await loadCombinedExam(parseInt(roundParam));
+        } else {
+            await loadSingleExam();
         }
     } catch (err) {
         console.error(err);
         alert('โหลดข้อสอบไม่สำเร็จ: ' + err.message);
+    }
+}
+
+async function loadSingleExam() {
+    const snap = await db.collection('exams').doc(examId).get();
+    if (!snap.exists) { alert('ไม่พบข้อสอบนี้'); history.back(); return; }
+    examData = { id: snap.id, ...snap.data() };
+
+    fillDescPage(
+        examData.examType, examData.round,
+        `แบบทดสอบครั้งที่ ${examData.round}`,
+        examData.subject || '',
+        examData.duration || 60,
+        examData.totalQuestions || '?',
+        examData.maxScore || 100,
+        examData.description
+    );
+    document.getElementById('examTitle').textContent = `${examData.examType} ครั้งที่ ${examData.round} — ${examData.subject || ''}`;
+    timerSec = (examData.duration || 60) * 60;
+
+    const qSnap = await db.collection('questions').where('examId','==',examId).get();
+    questions = qSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.order - b.order);
+
+    const subSnap = await db.collection('submissions')
+        .where('studentId','==',student.id).where('examId','==',examId).limit(1).get();
+    if (!subSnap.empty) {
+        alert('คุณได้ทดสอบข้อสอบนี้ไปแล้ว\nระบบจะพาคุณไปยังผลการสอบ');
+        showResults(subSnap.docs[0].data(), true);
+        return;
+    }
+    if (!examData.isOpen) {
+        alert('การทดสอบนี้ยังไม่เปิด กรุณาติดต่อครู');
+        window.location.href = 'student.html';
+    }
+}
+
+async function loadCombinedExam(round) {
+    const examSnap = await db.collection('exams').where('round','==',round).get();
+    const allExams = examSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!allExams.length) { alert('ไม่พบข้อสอบสำหรับรอบนี้'); history.back(); return; }
+
+    const examType     = allExams[0]?.examType || 'A-Level';
+    const totalScore   = allExams.reduce((s, e) => s + (e.maxScore || 0), 0);
+    const totalMinutes = 60;
+    const subjects     = [...new Set(allExams.map(e => e.subject))];
+
+    examData = {
+        id: 'combined_' + round,
+        round, examType,
+        subject: 'รวมทุกวิชา',
+        duration: totalMinutes,
+        maxScore: totalScore,
+        isOpen: allExams.some(e => e.isOpen),
+        combinedExamIds: allExams.map(e => e.id),
+        description: 'รวมข้อสอบทุกวิชา: ' + subjects.join(', ')
+    };
+
+    fillDescPage(
+        examType, round,
+        `แบบทดสอบรวมทุกวิชา ครั้งที่ ${round}`,
+        subjects.join(' / '),
+        totalMinutes, '...', totalScore,
+        examData.description
+    );
+    document.getElementById('examTitle').textContent = `${examType} ครั้งที่ ${round} — รวมทุกวิชา`;
+    timerSec = totalMinutes * 60;
+
+    // Group exams by subject and load questions in priority order
+    const subjectMap = {};
+    allExams.forEach(e => {
+        if (!subjectMap[e.subject]) subjectMap[e.subject] = [];
+        subjectMap[e.subject].push(e.id);
+    });
+    const sortedSubjects = Object.keys(subjectMap).sort((a, b) => {
+        const ai = SUBJECT_PRIORITY.indexOf(a);
+        const bi = SUBJECT_PRIORITY.indexOf(b);
+        if (ai === -1 && bi === -1) return a.localeCompare(b, 'th');
+        if (ai === -1) return 1; if (bi === -1) return -1;
+        return ai - bi;
+    });
+
+    const allQuestions = [];
+    for (const subject of sortedSubjects) {
+        const sqList = [];
+        for (const eid of subjectMap[subject]) {
+            const qSnap = await db.collection('questions').where('examId','==',eid).get();
+            sqList.push(...qSnap.docs.map(d => ({ id: d.id, _subject: subject, ...d.data() })));
+        }
+        sqList.sort((a, b) => a.order - b.order);
+        allQuestions.push(...sqList);
+    }
+    questions = allQuestions;
+    document.getElementById('dTotal').textContent = questions.length;
+
+    const combinedId = 'combined_' + round;
+    const subSnap = await db.collection('submissions')
+        .where('studentId','==',student.id).where('examId','==',combinedId).limit(1).get();
+    if (!subSnap.empty) {
+        alert('คุณได้ทดสอบข้อสอบนี้ไปแล้ว\nระบบจะพาคุณไปยังผลการสอบ');
+        showResults(subSnap.docs[0].data(), true);
+        return;
+    }
+    if (!examData.isOpen) {
+        alert('การทดสอบนี้ยังไม่เปิด กรุณาติดต่อครู');
+        window.location.href = 'student.html';
     }
 }
 
@@ -475,10 +578,16 @@ function updateTimerDisplay() {
 // ===== QUESTION NAVIGATION =====
 function buildNavBar() {
     const bar = document.getElementById('qNavBar');
-    bar.innerHTML = questions.map((q, i) => `
-        <button class="q-btn unanswered" id="qbtn-${i}" onclick="renderQuestion(${i})" title="ข้อที่ ${i+1}">
-            ${i+1}
-        </button>`).join('');
+    let html = '';
+    let lastSubject = null;
+    questions.forEach((q, i) => {
+        if (q._subject && q._subject !== lastSubject) {
+            html += `<span class="flex-shrink-0 self-center text-xs font-bold text-white bg-emerald-600 px-2 py-0.5 rounded-full ml-1 mr-0.5">${q._subject}</span>`;
+            lastSubject = q._subject;
+        }
+        html += `<button class="q-btn unanswered" id="qbtn-${i}" onclick="renderQuestion(${i})" title="ข้อที่ ${i+1}">${i+1}</button>`;
+    });
+    bar.innerHTML = html;
 }
 
 function updateNavBar() {
@@ -494,9 +603,22 @@ function renderQuestion(idx) {
     currentIdx = idx;
     const q = questions[idx];
 
-    document.getElementById('qLabel').textContent   = `ข้อที่ ${idx + 1}`;
+    document.getElementById('qLabel').innerHTML = `ข้อที่ ${idx + 1}` +
+        (q._subject ? ` <span class="ml-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">${q._subject}</span>` : '');
     document.getElementById('qText').innerHTML      = q.text || '';
     document.getElementById('qCounter').textContent = `${idx + 1} / ${questions.length}`;
+
+    // Passage panel
+    const passagePanel = document.getElementById('passagePanel');
+    const examLayout   = document.getElementById('examLayout');
+    if (q.passage) {
+        document.getElementById('passageText').textContent = q.passage;
+        passagePanel.classList.remove('hidden');
+        examLayout.className = 'flex gap-4 max-w-6xl mx-auto px-4 py-5';
+    } else {
+        passagePanel.classList.add('hidden');
+        examLayout.className = 'max-w-3xl mx-auto px-4 py-5';
+    }
     document.getElementById('prevBtn').disabled     = idx === 0;
 
     const nextBtn = document.getElementById('nextBtn');
@@ -527,7 +649,6 @@ function renderQuestion(idx) {
     // Answer area
     if (q.type === 'written') {
         document.getElementById('choicesArea').classList.add('hidden');
-        document.getElementById('writtenArea').classList.remove('hidden');
         document.getElementById('writtenArea').classList.remove('hidden');
         const ta = document.getElementById('writtenInput');
         ta.value = answers[q.id] || '';
@@ -614,19 +735,20 @@ async function submitExam() {
         studentId:    student.id,
         studentName:  student.name,
         studentClass: student.class,
-        examId:       examId,
+        examId:       examData.id,
         round:        examData.round,
         examType:     examData.examType,
         subject:      examData.subject || '',
         answers:      answers,
         autoScore:    autoScore,
         writtenScores: writtenScores,
-        totalScore:   hasWritten ? autoScore : autoScore,
+        totalScore:   autoScore,
         maxScore:     examData.maxScore || 100,
         isGraded:     !hasWritten,
         submittedAt:  firebase.firestore.FieldValue.serverTimestamp(),
         timeTaken:    timeTaken
     };
+    if (examData.combinedExamIds) submission.examIds = examData.combinedExamIds;
 
     try {
         const ref = await db.collection('submissions').add(submission);
