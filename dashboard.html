@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard ครู | ระบบทดสอบข้อสอบ A-Level, สอวน., O-NET | ห้องเรียนพิเศษ โรงเรียนสหราษฏร์รังสฤษดิ์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <style>
+        * { font-family: 'Sarabun', sans-serif; }
+        body { background: #f0f4f8; }
+
+        /* Login */
+        .login-overlay {
+            position: fixed; inset: 0; z-index: 200;
+            background: linear-gradient(135deg, #0f2b6b, #1d4ed8, #312e81);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-card { background: white; border-radius: 24px; padding: 40px; width: 90%; max-width: 380px; }
+        .t-input { border: 2px solid #e2e8f0; transition: all 0.3s; }
+        .t-input:focus { border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29,78,216,0.1); outline: none; }
+
+        /* Topbar */
+        .topbar { background: linear-gradient(135deg, #0f2b6b, #1d4ed8); }
+
+        /* Stats cards */
+        .stat-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+
+        /* Filters */
+        .filter-chip {
+            padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+            border: 2px solid transparent; cursor: pointer; transition: all 0.2s;
+        }
+        .filter-chip.active { background: #1d4ed8; color: white; border-color: #1d4ed8; }
+        .filter-chip.inactive { background: white; color: #64748b; border-color: #e2e8f0; }
+        .filter-chip.inactive:hover { border-color: #93c5fd; color: #1d4ed8; }
+
+        /* Table */
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { background: #f8fafc; padding: 12px 14px; text-align: left; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #e2e8f0; }
+        .data-table td { padding: 14px; font-size: 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .data-table tr:hover td { background: #f8fafc; }
+        .badge { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .badge-pending  { background: #fef3c7; color: #92400e; }
+        .badge-graded   { background: #dcfce7; color: #15803d; }
+        .badge-สอวน    { background: #dbeafe; color: #1d4ed8; }
+        .badge-alevel  { background: #d1fae5; color: #065f46; }
+        .badge-onet    { background: #ede9fe; color: #5b21b6; }
+
+        /* Grade Modal */
+        .grade-modal { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); align-items:flex-start; justify-content:center; padding-top:40px; }
+        .grade-modal.show { display:flex; }
+        .grade-panel { background:white; border-radius:24px; width:95%; max-width:700px; max-height:85vh; overflow-y:auto; }
+
+        /* Exam management */
+        .exam-manage-modal { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
+        .exam-manage-modal.show { display:flex; }
+
+        .toggle-switch { position:relative; width:44px; height:24px; }
+        .toggle-switch input { opacity:0; width:0; height:0; }
+        .slider { position:absolute; cursor:pointer; inset:0; background:#e2e8f0; border-radius:24px; transition:0.3s; }
+        .slider:before { position:absolute; content:''; height:18px; width:18px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; }
+        input:checked + .slider { background:#1d4ed8; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+        .tab-btn { padding: 10px 18px; font-size: 14px; font-weight: 600; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+        .tab-btn.active { border-color: #1d4ed8; color: #1d4ed8; }
+        .tab-btn.inactive { color: #94a3b8; }
+        .tab-btn.inactive:hover { color: #64748b; }
+        .tabs-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .tabs-scroll::-webkit-scrollbar { display: none; }
+
+        @media (max-width: 640px) {
+            .data-table th:nth-child(4), .data-table td:nth-child(4),
+            .data-table th:nth-child(5), .data-table td:nth-child(5) { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== LOGIN OVERLAY ===== -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-card fade-in">
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 mb-3">
+                <i class="fas fa-chalkboard-teacher text-blue-600 text-2xl"></i>
+            </div>
+            <h2 class="text-xl font-extrabold text-gray-800">เข้าสู่ระบบครู</h2>
+            <p class="text-gray-400 text-sm mt-1">Dashboard ตรวจข้อสอบ</p>
+        </div>
+        <div class="mb-4">
+            <label class="block text-sm font-semibold text-gray-600 mb-1.5">ชื่อผู้ใช้</label>
+            <input type="text" id="tUser" class="t-input w-full px-4 py-3 rounded-xl" placeholder="ชื่อผู้ใช้">
+        </div>
+        <div class="mb-5">
+            <label class="block text-sm font-semibold text-gray-600 mb-1.5">รหัสผ่าน</label>
+            <input type="password" id="tPass" class="t-input w-full px-4 py-3 rounded-xl" placeholder="รหัสผ่าน">
+        </div>
+        <div id="loginErr" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center"></div>
+        <button onclick="teacherLogin()" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base transition-all">
+            <i class="fas fa-sign-in-alt mr-2"></i>เข้าสู่ระบบ
+        </button>
+        <div class="mt-4 text-center">
+            <a href="index.html" class="text-xs text-gray-400 hover:text-gray-600"><i class="fas fa-arrow-left mr-1"></i>กลับหน้าหลัก</a>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MAIN DASHBOARD ===== -->
+<div id="mainDash" class="hidden">
+
+<!-- Topbar -->
+<div class="topbar px-5 py-3 flex items-center justify-between sticky top-0 z-40 shadow-lg">
+    <div class="flex items-center gap-3">
+        <i class="fas fa-graduation-cap text-yellow-400 text-xl"></i>
+        <div>
+            <p class="text-white font-bold text-sm">Dashboard ครู — ระบบทดสอบข้อสอบ A-Level, สอวน., O-NET</p>
+            <p class="text-blue-200 text-xs">ห้องเรียนพิเศษ โรงเรียนสหราษฏร์รังสฤษดิ์ สพม.นครพนม</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <button onclick="openExamManager()" class="text-white bg-white/15 hover:bg-white/25 px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+            <i class="fas fa-cog"></i><span class="hidden sm:inline">จัดการข้อสอบ</span>
+        </button>
+        <button onclick="teacherLogout()" class="text-white bg-white/15 hover:bg-white/25 px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all">
+            <i class="fas fa-sign-out-alt"></i><span class="hidden sm:inline">ออกจากระบบ</span>
+        </button>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 py-5">
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs text-gray-500 font-medium">ส่งข้อสอบทั้งหมด</p>
+                <i class="fas fa-file-alt text-blue-400"></i>
+            </div>
+            <p id="sTotalSubs" class="text-2xl font-extrabold text-gray-800">-</p>
+        </div>
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs text-gray-500 font-medium">รอตรวจ</p>
+                <i class="fas fa-hourglass-half text-yellow-400"></i>
+            </div>
+            <p id="sPending" class="text-2xl font-extrabold text-yellow-500">-</p>
+        </div>
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs text-gray-500 font-medium">ตรวจแล้ว</p>
+                <i class="fas fa-check-circle text-green-400"></i>
+            </div>
+            <p id="sGraded" class="text-2xl font-extrabold text-green-600">-</p>
+        </div>
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs text-gray-500 font-medium">คะแนนเฉลี่ย</p>
+                <i class="fas fa-chart-line text-purple-400"></i>
+            </div>
+            <p id="sAvgScore" class="text-2xl font-extrabold text-purple-600">-</p>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="bg-white rounded-2xl shadow-sm mb-4 overflow-hidden">
+        <div class="flex border-b border-gray-100 tabs-scroll">
+            <button onclick="switchMainTab('submissions')" id="mtab-submissions" class="tab-btn active">
+                <i class="fas fa-list-alt mr-2"></i>ผลการสอบ
+            </button>
+            <button onclick="switchMainTab('students')" id="mtab-students" class="tab-btn inactive">
+                <i class="fas fa-users mr-2"></i>นักเรียน
+            </button>
+            <button onclick="switchMainTab('exams')" id="mtab-exams" class="tab-btn inactive">
+                <i class="fas fa-file-alt mr-2"></i>ข้อสอบ
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== SUBMISSIONS TAB ===== -->
+    <div id="tab-submissions">
+        <!-- Filters -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="text-sm font-semibold text-gray-600"><i class="fas fa-filter mr-2 text-gray-400"></i>กรองตาม:</span>
+                <div class="flex flex-wrap gap-2" id="typeFilters">
+                    <button onclick="applyFilter('type','all')" class="filter-chip active" data-type-chip="all">ทั้งหมด</button>
+                    <button onclick="applyFilter('type','สอวน.')" class="filter-chip inactive" data-type-chip="สอวน.">สอวน.</button>
+                    <button onclick="applyFilter('type','A-Level')" class="filter-chip inactive" data-type-chip="A-Level">A-Level</button>
+                    <button onclick="applyFilter('type','O-NET')" class="filter-chip inactive" data-type-chip="O-NET">O-NET</button>
+                </div>
+                <div class="flex flex-wrap gap-2 ml-auto items-center">
+                    <select id="roundFilter" onchange="applyFilter('round',this.value)" class="text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-400">
+                        <option value="all">ทุกครั้ง</option>
+                    </select>
+                    <select id="statusFilter" onchange="applyFilter('status',this.value)" class="text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-400">
+                        <option value="all">ทุกสถานะ</option>
+                        <option value="pending">รอตรวจ</option>
+                        <option value="graded">ตรวจแล้ว</option>
+                    </select>
+                    <button onclick="exportCSV()" class="text-sm px-4 py-1.5 rounded-xl bg-green-50 text-green-700 border-2 border-green-200 font-semibold hover:bg-green-100 transition-all">
+                        <i class="fas fa-file-csv mr-1"></i>Export CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>นักเรียน</th>
+                            <th>ประเภท / วิชา</th>
+                            <th>ครั้งที่</th>
+                            <th>วันส่ง</th>
+                            <th>เวลาที่ใช้</th>
+                            <th>คะแนน</th>
+                            <th>สถานะ</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subTableBody">
+                        <tr><td colspan="8" class="text-center py-10 text-gray-400">
+                            <i class="fas fa-circle-notch fa-spin text-2xl mb-2 block"></i>กำลังโหลด...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
+                <p id="tableCount" class="text-xs text-gray-400"></p>
+                <div class="flex gap-2">
+                    <button onclick="prevPage()" id="btnPrev" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 disabled:opacity-40">
+                        <i class="fas fa-chevron-left mr-1"></i>ก่อน
+                    </button>
+                    <span id="pageInfo" class="text-xs text-gray-500 flex items-center px-2">หน้า 1</span>
+                    <button onclick="nextPage()" id="btnNext" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 disabled:opacity-40">
+                        ถัดไป<i class="fas fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== STUDENTS TAB ===== -->
+    <div id="tab-students" class="hidden">
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-gray-700"><i class="fas fa-users text-blue-500 mr-2"></i>รายชื่อนักเรียน</h3>
+                <button onclick="openAddStudent()" class="text-sm px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
+                    <i class="fas fa-plus mr-1.5"></i>เพิ่มนักเรียน
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>เลขประจำตัว</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>ชั้น</th>
+                            <th>เลขที่</th>
+                            <th>ประเภทสอบ</th>
+                            <th>วิชา</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <tr><td colspan="7" class="text-center py-8 text-gray-400">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== EXAMS TAB ===== -->
+    <div id="tab-exams" class="hidden">
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-gray-700"><i class="fas fa-file-alt text-blue-500 mr-2"></i>จัดการข้อสอบ</h3>
+                <button onclick="openAddExam()" class="text-sm px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
+                    <i class="fas fa-plus mr-1.5"></i>เพิ่มข้อสอบ
+                </button>
+            </div>
+            <div id="examListTable" class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>ครั้งที่</th><th>ประเภท</th><th>วิชา</th><th>วันสอบ</th><th>เวลา</th><th>ข้อ</th><th>คะแนน</th><th>สถานะ</th><th>จัดการ</th></tr>
+                    </thead>
+                    <tbody id="examTableBody">
+                        <tr><td colspan="9" class="text-center py-8 text-gray-400">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div><!-- end max-w -->
+</div><!-- end mainDash -->
+
+<!-- ===== GRADE MODAL ===== -->
+<div class="grade-modal" id="gradeModal">
+    <div class="grade-panel mx-4 mb-8 fade-in">
+        <div class="sticky top-0 bg-white border-b border-gray-100 p-5 flex items-center justify-between rounded-t-3xl z-10">
+            <div>
+                <h3 class="font-extrabold text-gray-800 text-lg" id="gmTitle">ตรวจข้อสอบ</h3>
+                <p class="text-sm text-gray-400" id="gmSubtitle">-</p>
+            </div>
+            <button onclick="closeGradeModal()" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 flex-shrink-0">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="gradeBody" class="p-5"></div>
+        <div class="sticky bottom-0 bg-white border-t border-gray-100 p-4 rounded-b-3xl flex gap-3">
+            <button onclick="closeGradeModal()" class="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold hover:border-gray-300">ยกเลิก</button>
+            <button onclick="saveGrade()" class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all">
+                <i class="fas fa-save mr-2"></i>บันทึกคะแนน
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ADD STUDENT MODAL ===== -->
+<div class="exam-manage-modal" id="addStudentModal">
+    <div class="bg-white rounded-3xl p-6 w-90 max-w-md mx-4 fade-in" style="width:90%;max-width:440px">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="font-bold text-gray-800"><i class="fas fa-user-plus text-blue-500 mr-2"></i>เพิ่มนักเรียน</h3>
+            <button onclick="document.getElementById('addStudentModal').classList.remove('show')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+        </div>
+        <div class="space-y-3">
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1">เลขประจำตัว*</label>
+                <input id="as_id" type="text" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="เช่น 12345"></div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1">ชื่อ-นามสกุล*</label>
+                <input id="as_name" type="text" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="ชื่อ นามสกุล"></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">ชั้นเรียน*</label>
+                    <input id="as_class" type="text" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="ม.4/1"></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">เลขที่*</label>
+                    <input id="as_number" type="number" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="1"></div>
+            </div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1">ประเภทสอบ*</label>
+                <select id="as_type" class="t-input w-full px-4 py-2.5 rounded-xl text-sm">
+                    <option value="สอวน.">สอวน.</option>
+                    <option value="A-Level">A-Level</option>
+                    <option value="O-NET">O-NET</option>
+                </select></div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1">วิชา</label>
+                <input id="as_subject" type="text" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="คณิตศาสตร์, ฟิสิกส์..."></div>
+        </div>
+        <div id="asErr" class="hidden mt-3 p-2 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs text-center"></div>
+        <div class="flex gap-3 mt-5">
+            <button onclick="document.getElementById('addStudentModal').classList.remove('show')" class="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm">ยกเลิก</button>
+            <button onclick="saveStudent()" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all"><i class="fas fa-save mr-1"></i>บันทึก</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ADD EXAM MODAL ===== -->
+<div class="exam-manage-modal" id="addExamModal">
+    <div class="bg-white rounded-3xl p-6 mx-4 fade-in" style="width:90%;max-width:520px;max-height:90vh;overflow-y:auto">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="font-bold text-gray-800"><i class="fas fa-plus-circle text-blue-500 mr-2"></i>เพิ่มข้อสอบ</h3>
+            <button onclick="document.getElementById('addExamModal').classList.remove('show')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-lg"></i></button>
+        </div>
+        <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">ประเภทสอบ*</label>
+                    <select id="ae_type" class="t-input w-full px-4 py-2.5 rounded-xl text-sm">
+                        <option value="สอวน.">สอวน.</option><option value="A-Level">A-Level</option><option value="O-NET">O-NET</option>
+                    </select></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">ครั้งที่*</label>
+                    <input id="ae_round" type="number" min="1" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="1"></div>
+            </div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1">วิชา*</label>
+                <input id="ae_subject" type="text" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="คณิตศาสตร์, ฟิสิกส์..."></div>
+            <div class="grid grid-cols-3 gap-3">
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">เวลา (นาที)*</label>
+                    <input id="ae_duration" type="number" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="60"></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">จำนวนข้อ</label>
+                    <input id="ae_total" type="number" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="30"></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">คะแนนรวม*</label>
+                    <input id="ae_maxscore" type="number" class="t-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="100"></div>
+            </div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1">วันสอบ</label>
+                <input id="ae_date" type="date" class="t-input w-full px-4 py-2.5 rounded-xl text-sm"></div>
+            <div><label class="block text-xs font-semibold text-gray-600 mb-1">คำอธิบาย / คำชี้แจง</label>
+                <textarea id="ae_desc" rows="3" class="t-input w-full px-4 py-2.5 rounded-xl text-sm resize-none" placeholder="คำอธิบายข้อสอบ..."></textarea></div>
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div>
+                    <p class="text-sm font-semibold text-gray-700">เปิดให้นักเรียนสอบ</p>
+                    <p class="text-xs text-gray-400">เมื่อเปิดแล้ว นักเรียนจะเข้าสอบได้ทันที</p>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="ae_open">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        <div id="aeErr" class="hidden mt-3 p-2 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs text-center"></div>
+        <div class="flex gap-3 mt-5">
+            <button onclick="document.getElementById('addExamModal').classList.remove('show')" class="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm">ยกเลิก</button>
+            <button onclick="saveExam()" class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all"><i class="fas fa-save mr-1"></i>บันทึก</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== STATE =====
+let allSubmissions = [], allStudents = [], allExams = [];
+let currentFilters = { type:'all', round:'all', status:'all' };
+let currentPage = 1, pageSize = 15;
+let currentGradeSub = null;
+let currentGradeQuestions = [];
+let currentMainTab = 'submissions';
+
+// ===== LOGIN =====
+async function teacherLogin() {
+    const user = document.getElementById('tUser').value.trim();
+    const pass = document.getElementById('tPass').value;
+    const err  = document.getElementById('loginErr');
+    err.classList.add('hidden');
+
+    if (!user || !pass) { err.textContent = 'กรุณากรอกข้อมูลให้ครบถ้วน'; err.classList.remove('hidden'); return; }
+
+    try {
+        const snap = await db.collection('config').doc('teacher').get();
+        let valid = false;
+        if (snap.exists) {
+            const cfg = snap.data();
+            valid = (cfg.username === user || !cfg.username) && cfg.password === pass;
+        } else {
+            // Default credentials if config not set
+            valid = user === 'teacher' && pass === 'teacher1234';
+        }
+        if (valid) {
+            sessionStorage.setItem('teacher', user);
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainDash').classList.remove('hidden');
+            loadAllData();
+        } else {
+            err.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+            err.classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error(e);
+        err.textContent = 'เชื่อมต่อฐานข้อมูลไม่ได้: ' + e.message;
+        err.classList.remove('hidden');
+    }
+}
+
+document.getElementById('tPass').addEventListener('keyup', e => { if (e.key === 'Enter') teacherLogin(); });
+
+function teacherLogout() {
+    if (confirm('ออกจากระบบ?')) {
+        sessionStorage.removeItem('teacher');
+        location.reload();
+    }
+}
+
+// Auto-restore session
+if (sessionStorage.getItem('teacher')) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('mainDash').classList.remove('hidden');
+    loadAllData();
+}
+
+// ===== LOAD DATA =====
+async function loadAllData() {
+    try {
+        const [subSnap, studentSnap, examSnap] = await Promise.all([
+            db.collection('submissions').orderBy('submittedAt', 'desc').get(),
+            db.collection('students').orderBy('class').get(),
+            db.collection('exams').orderBy('round').get()
+        ]);
+
+        allSubmissions = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allStudents    = studentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allExams       = examSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        updateStats();
+        renderSubmissions();
+        renderStudents();
+        renderExams();
+        buildRoundFilter();
+    } catch (e) {
+        console.error(e);
+        document.getElementById('subTableBody').innerHTML =
+            `<tr><td colspan="8" class="text-center py-8 text-red-400"><i class="fas fa-exclamation-triangle mr-2"></i>โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
+    }
+}
+
+function updateStats() {
+    const pending = allSubmissions.filter(s => !s.isGraded).length;
+    const graded  = allSubmissions.filter(s => s.isGraded).length;
+    const avg     = graded ? Math.round(allSubmissions.filter(s=>s.isGraded).reduce((a,s)=>a+(s.totalScore||0),0)/graded) : 0;
+    document.getElementById('sTotalSubs').textContent = allSubmissions.length;
+    document.getElementById('sPending').textContent   = pending;
+    document.getElementById('sGraded').textContent    = graded;
+    document.getElementById('sAvgScore').textContent  = avg;
+}
+
+function buildRoundFilter() {
+    const rounds = [...new Set(allSubmissions.map(s=>s.round).filter(Boolean))].sort((a,b)=>a-b);
+    const sel = document.getElementById('roundFilter');
+    sel.innerHTML = '<option value="all">ทุกครั้ง</option>' +
+        rounds.map(r => `<option value="${r}">ครั้งที่ ${r}</option>`).join('');
+}
+
+// ===== FILTER =====
+function applyFilter(key, value) {
+    currentFilters[key] = value;
+    currentPage = 1;
+    if (key === 'type') {
+        document.querySelectorAll('[data-type-chip]').forEach(b => {
+            b.className = b.dataset.typeChip === value ? 'filter-chip active' : 'filter-chip inactive';
+        });
+    }
+    renderSubmissions();
+}
+
+function getFiltered() {
+    return allSubmissions.filter(s => {
+        if (currentFilters.type !== 'all' && s.examType !== currentFilters.type) return false;
+        if (currentFilters.round !== 'all' && String(s.round) !== currentFilters.round) return false;
+        if (currentFilters.status === 'pending' && s.isGraded)  return false;
+        if (currentFilters.status === 'graded'  && !s.isGraded) return false;
+        return true;
+    });
+}
+
+// ===== RENDER SUBMISSIONS TABLE =====
+function renderSubmissions() {
+    const data  = getFiltered();
+    const start = (currentPage - 1) * pageSize;
+    const page  = data.slice(start, start + pageSize);
+    const totalPages = Math.ceil(data.length / pageSize);
+
+    document.getElementById('tableCount').textContent = `แสดง ${start+1}–${Math.min(start+pageSize,data.length)} จาก ${data.length} รายการ`;
+    document.getElementById('pageInfo').textContent   = `หน้า ${currentPage} / ${totalPages || 1}`;
+    document.getElementById('btnPrev').disabled = currentPage <= 1;
+    document.getElementById('btnNext').disabled = currentPage >= totalPages;
+
+    const typeClass = { 'สอวน.': 'badge-สอวน', 'A-Level': 'badge-alevel', 'O-NET': 'badge-onet' };
+    const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+    if (!page.length) {
+        document.getElementById('subTableBody').innerHTML =
+            '<tr><td colspan="8" class="text-center py-10 text-gray-400"><i class="fas fa-inbox text-3xl mb-2 block"></i>ไม่พบข้อมูล</td></tr>';
+        return;
+    }
+
+    document.getElementById('subTableBody').innerHTML = page.map(s => {
+        const tc  = typeClass[s.examType] || 'badge-onet';
+        const date = s.submittedAt?.toDate ? (() => { const d=s.submittedAt.toDate(); return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()+543}`; })() : '-';
+        const time = s.timeTaken ? `${Math.floor(s.timeTaken/60)}:${String(s.timeTaken%60).padStart(2,'0')}` : '-';
+        const scoreDisp = s.isGraded ? `<span class="font-bold text-blue-600">${s.totalScore||0}</span>/${s.maxScore||100}` : `<span class="text-yellow-600 font-semibold">${s.autoScore||0}+?</span>`;
+        const statusBadge = s.isGraded ? '<span class="badge badge-graded"><i class="fas fa-check mr-1"></i>ตรวจแล้ว</span>' : '<span class="badge badge-pending"><i class="fas fa-hourglass-half mr-1"></i>รอตรวจ</span>';
+        const hasWritten = Object.values(s.writtenScores||{}).length > 0;
+        const gradeBtn = !s.isGraded && hasWritten
+            ? `<button onclick="openGradeModal('${s.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all"><i class="fas fa-pen mr-1"></i>ตรวจ</button>`
+            : `<button onclick="openGradeModal('${s.id}')" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 transition-all"><i class="fas fa-eye mr-1"></i>ดู</button>`;
+        return `<tr>
+            <td><p class="font-semibold text-gray-800">${s.studentName||'-'}</p><p class="text-xs text-gray-400">${s.studentClass||''} • ${s.studentId||s.studentId||''}</p></td>
+            <td><span class="badge ${tc}">${s.examType||'-'}</span><p class="text-xs text-gray-400 mt-1">${s.subject||'-'}</p></td>
+            <td class="text-center font-bold text-gray-700">ครั้งที่ ${s.round||'-'}</td>
+            <td class="text-xs text-gray-500">${date}</td>
+            <td class="text-xs text-gray-500">${time}</td>
+            <td>${scoreDisp}</td>
+            <td>${statusBadge}</td>
+            <td>${gradeBtn}</td>
+        </tr>`;
+    }).join('');
+}
+
+function prevPage() { if (currentPage > 1) { currentPage--; renderSubmissions(); } }
+function nextPage() { currentPage++; renderSubmissions(); }
+
+// ===== GRADE MODAL =====
+async function openGradeModal(subId) {
+    const sub = allSubmissions.find(s => s.id === subId);
+    if (!sub) return;
+    currentGradeSub = sub;
+
+    document.getElementById('gmTitle').textContent    = `ตรวจข้อสอบ — ${sub.studentName}`;
+    document.getElementById('gmSubtitle').textContent = `${sub.examType} ครั้งที่ ${sub.round} | ${sub.subject||''}`;
+    document.getElementById('gradeBody').innerHTML    = '<div class="text-center py-8"><i class="fas fa-circle-notch fa-spin text-blue-400 text-2xl"></i></div>';
+    document.getElementById('gradeModal').classList.add('show');
+
+    try {
+        const snap = await db.collection('questions').where('examId','==',sub.examId).orderBy('order').get();
+        currentGradeQuestions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderGradeBody(sub);
+    } catch (e) {
+        document.getElementById('gradeBody').innerHTML = `<p class="text-red-500 text-center py-6">โหลดคำถามไม่สำเร็จ: ${e.message}</p>`;
+    }
+}
+
+function renderGradeBody(sub) {
+    const choiceKeys = ['ก','ข','ค','ง','จ'];
+    let html = '';
+
+    // Student info summary
+    html += `
+    <div class="bg-blue-50 rounded-2xl p-4 mb-5 grid grid-cols-2 gap-3 text-sm">
+        <div><span class="text-gray-500">นักเรียน:</span> <strong>${sub.studentName}</strong></div>
+        <div><span class="text-gray-500">ชั้น:</span> <strong>${sub.studentClass}</strong></div>
+        <div><span class="text-gray-500">คะแนน MC:</span> <strong class="text-green-600">${sub.autoScore||0} คะแนน</strong></div>
+        <div><span class="text-gray-500">คะแนนสูงสุด:</span> <strong>${sub.maxScore||100} คะแนน</strong></div>
+    </div>`;
+
+    currentGradeQuestions.forEach((q, i) => {
+        const studentAns = sub.answers[q.id] || '';
+        if (q.type === 'choice') {
+            const correct = studentAns === q.correctAnswer;
+            html += `
+            <div class="border rounded-2xl p-4 mb-3 ${correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+                <div class="flex items-start gap-3">
+                    <span class="text-lg flex-shrink-0">${correct?'✅':'❌'}</span>
+                    <div class="flex-1">
+                        <p class="font-semibold text-gray-800 text-sm mb-1">ข้อ ${i+1}: ${q.text||''}</p>
+                        <p class="text-xs">คำตอบนักเรียน: <strong>${studentAns||'ไม่ตอบ'}</strong>
+                           ${!correct?` • เฉลย: <strong class="text-green-700">${q.correctAnswer}</strong>`:''}</p>
+                    </div>
+                    <span class="text-sm font-bold ${correct?'text-green-600':'text-red-500'}">${correct?(q.maxScore||1):0}/${q.maxScore||1}</span>
+                </div>
+            </div>`;
+        } else {
+            const currentScore = sub.writtenScores?.[q.id] ?? '';
+            html += `
+            <div class="border-2 border-yellow-200 bg-yellow-50 rounded-2xl p-4 mb-3">
+                <div class="flex items-start justify-between gap-3 mb-2">
+                    <div class="flex-1">
+                        <p class="font-semibold text-gray-800 text-sm mb-1">📝 ข้อ ${i+1} (อัตนัย): ${q.text||''}</p>
+                    </div>
+                    <span class="text-xs text-gray-500 whitespace-nowrap">สูงสุด ${q.maxScore||0} คะแนน</span>
+                </div>
+                <div class="bg-white border border-yellow-100 rounded-xl p-3 mb-3">
+                    <p class="text-xs text-gray-500 mb-1 font-medium"><i class="fas fa-user mr-1"></i>คำตอบนักเรียน:</p>
+                    <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${studentAns || '<em class="text-gray-300">ไม่มีคำตอบ</em>'}</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="text-sm font-semibold text-gray-600 whitespace-nowrap">ให้คะแนน:</label>
+                    <input type="number" id="ws_${q.id}" min="0" max="${q.maxScore||0}" value="${currentScore}"
+                        class="t-input px-3 py-1.5 rounded-xl text-sm w-24 text-center font-bold"
+                        placeholder="0">
+                    <span class="text-sm text-gray-400">/ ${q.maxScore||0}</span>
+                    <span class="text-xs text-gray-400">(0–${q.maxScore||0} คะแนน)</span>
+                </div>
+            </div>`;
+        }
+    });
+
+    // Score preview
+    html += `
+    <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 mt-4">
+        <div class="flex items-center justify-between">
+            <span class="font-semibold text-gray-700">คะแนนรวมทั้งหมด:</span>
+            <span class="text-xl font-extrabold text-blue-600" id="totalScorePreview">${sub.autoScore||0} + (รออัตนัย) = ?</span>
+        </div>
+    </div>`;
+
+    document.getElementById('gradeBody').innerHTML = html;
+
+    // Live score preview
+    const writtenInputs = currentGradeQuestions.filter(q=>q.type==='written');
+    writtenInputs.forEach(q => {
+        const input = document.getElementById('ws_' + q.id);
+        if (input) input.addEventListener('input', updateScorePreview);
+    });
+    updateScorePreview();
+}
+
+function updateScorePreview() {
+    if (!currentGradeSub) return;
+    let writtenTotal = 0;
+    currentGradeQuestions.filter(q=>q.type==='written').forEach(q => {
+        const v = parseInt(document.getElementById('ws_'+q.id)?.value || 0);
+        writtenTotal += isNaN(v) ? 0 : v;
+    });
+    const total = (currentGradeSub.autoScore||0) + writtenTotal;
+    const max   = currentGradeSub.maxScore || 100;
+    document.getElementById('totalScorePreview').textContent = `${currentGradeSub.autoScore||0} + ${writtenTotal} = ${total} / ${max} คะแนน`;
+}
+
+async function saveGrade() {
+    if (!currentGradeSub) return;
+    const writtenScores = {};
+    let writtenTotal = 0;
+    let valid = true;
+
+    currentGradeQuestions.filter(q=>q.type==='written').forEach(q => {
+        const input = document.getElementById('ws_'+q.id);
+        const v = parseInt(input?.value || '0');
+        if (isNaN(v) || v < 0 || v > (q.maxScore||0)) {
+            alert(`คะแนนข้อ ${q.order||''} ไม่ถูกต้อง (0–${q.maxScore||0})`);
+            valid = false; return;
+        }
+        writtenScores[q.id] = v;
+        writtenTotal += v;
+    });
+
+    if (!valid) return;
+    const totalScore = (currentGradeSub.autoScore||0) + writtenTotal;
+
+    try {
+        await db.collection('submissions').doc(currentGradeSub.id).update({
+            writtenScores, totalScore, isGraded: true,
+            gradedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update leaderboard
+        const sid = currentGradeSub.studentId;
+        const ref = db.collection('scores').doc(sid);
+        const snap = await ref.get();
+        // Recalculate from all graded submissions
+        const allSubSnap = await db.collection('submissions').where('studentId','==',sid).where('isGraded','==',true).get();
+        let grandTotal = 0;
+        allSubSnap.docs.forEach(d => { grandTotal += d.data().totalScore||0; });
+        grandTotal += totalScore; // Include current (not yet updated in Firestore query above)
+
+        const studentData = allStudents.find(s => s.id === sid);
+        await ref.set({
+            studentName: currentGradeSub.studentName,
+            class: currentGradeSub.studentClass,
+            examType: currentGradeSub.examType,
+            totalScore: grandTotal,
+            examCount: allSubSnap.docs.length + 1,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // Update local state
+        const idx = allSubmissions.findIndex(s => s.id === currentGradeSub.id);
+        if (idx >= 0) {
+            allSubmissions[idx] = { ...allSubmissions[idx], writtenScores, totalScore, isGraded: true };
+        }
+
+        alert(`✅ บันทึกคะแนนสำเร็จ!\n${currentGradeSub.studentName}: ${totalScore} / ${currentGradeSub.maxScore||100} คะแนน`);
+        closeGradeModal();
+        updateStats();
+        renderSubmissions();
+    } catch (e) {
+        alert('บันทึกไม่สำเร็จ: ' + e.message);
+    }
+}
+
+function closeGradeModal() {
+    document.getElementById('gradeModal').classList.remove('show');
+    currentGradeSub = null;
+}
+document.getElementById('gradeModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeGradeModal();
+});
+
+// ===== STUDENTS TABLE =====
+function renderStudents() {
+    const typeClass = { 'สอวน.': 'badge-สอวน', 'A-Level': 'badge-alevel', 'O-NET': 'badge-onet' };
+    document.getElementById('studentTableBody').innerHTML = allStudents.length
+        ? allStudents.map(s => `
+            <tr>
+                <td class="font-mono font-bold text-gray-700">${s.id}</td>
+                <td class="font-semibold">${s.name||'-'}</td>
+                <td>${s.class||'-'}</td>
+                <td class="text-center">${s.number||'-'}</td>
+                <td><span class="badge ${typeClass[s.examType]||'badge-onet'}">${s.examType||'-'}</span></td>
+                <td class="text-sm text-gray-500">${s.subject||'-'}</td>
+                <td>
+                    <button onclick="deleteStudent('${s.id}')" class="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-all">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`).join('')
+        : '<tr><td colspan="7" class="text-center py-8 text-gray-400">ยังไม่มีข้อมูลนักเรียน</td></tr>';
+}
+
+// ===== EXAMS TABLE =====
+function renderExams() {
+    const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const typeClass = { 'สอวน.': 'badge-สอวน', 'A-Level': 'badge-alevel', 'O-NET': 'badge-onet' };
+    document.getElementById('examTableBody').innerHTML = allExams.length
+        ? allExams.map(e => {
+            const dt = e.date?.toDate ? e.date.toDate() : (e.date ? new Date(e.date) : null);
+            const dateStr = dt ? `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()+543}` : '-';
+            const openChk = `<label class="toggle-switch"><input type="checkbox" ${e.isOpen?'checked':''} onchange="toggleExamOpen('${e.id}',this.checked)"><span class="slider"></span></label>`;
+            return `<tr>
+                <td class="text-center font-bold">${e.round}</td>
+                <td><span class="badge ${typeClass[e.examType]||'badge-onet'}">${e.examType}</span></td>
+                <td>${e.subject||'-'}</td>
+                <td class="text-xs">${dateStr}</td>
+                <td>${e.duration||'-'} นาที</td>
+                <td>${e.totalQuestions||'-'}</td>
+                <td>${e.maxScore||'-'}</td>
+                <td>${openChk}</td>
+                <td>
+                    <button onclick="deleteExam('${e.id}')" class="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-all">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('')
+        : '<tr><td colspan="9" class="text-center py-8 text-gray-400">ยังไม่มีข้อสอบ</td></tr>';
+}
+
+// ===== ADD STUDENT =====
+function openAddStudent() { document.getElementById('addStudentModal').classList.add('show'); }
+async function saveStudent() {
+    const id = document.getElementById('as_id').value.trim();
+    const name = document.getElementById('as_name').value.trim();
+    const cls  = document.getElementById('as_class').value.trim();
+    const num  = document.getElementById('as_number').value;
+    const type = document.getElementById('as_type').value;
+    const subj = document.getElementById('as_subject').value.trim();
+    const err  = document.getElementById('asErr');
+
+    if (!id || !name || !cls || !num) {
+        err.textContent = 'กรุณากรอกข้อมูลที่จำเป็นให้ครบ (*)';
+        err.classList.remove('hidden'); return;
+    }
+    try {
+        await db.collection('students').doc(id).set({
+            name, class: cls, number: parseInt(num), examType: type, subject: subj
+        });
+        document.getElementById('addStudentModal').classList.remove('show');
+        ['as_id','as_name','as_class','as_number','as_subject'].forEach(f => document.getElementById(f).value = '');
+        err.classList.add('hidden');
+        allStudents = [...allStudents, { id, name, class:cls, number:parseInt(num), examType:type, subject:subj }];
+        renderStudents();
+        alert('✅ เพิ่มนักเรียนสำเร็จ');
+    } catch (e) { err.textContent = 'บันทึกไม่สำเร็จ: '+e.message; err.classList.remove('hidden'); }
+}
+
+async function deleteStudent(id) {
+    if (!confirm(`ลบนักเรียน "${id}" ออกจากระบบ?`)) return;
+    await db.collection('students').doc(id).delete();
+    allStudents = allStudents.filter(s => s.id !== id);
+    renderStudents();
+}
+
+// ===== ADD EXAM =====
+function openAddExam() { document.getElementById('addExamModal').classList.add('show'); }
+async function saveExam() {
+    const type     = document.getElementById('ae_type').value;
+    const round    = parseInt(document.getElementById('ae_round').value);
+    const subject  = document.getElementById('ae_subject').value.trim();
+    const duration = parseInt(document.getElementById('ae_duration').value);
+    const total    = parseInt(document.getElementById('ae_total').value) || null;
+    const maxScore = parseInt(document.getElementById('ae_maxscore').value);
+    const dateVal  = document.getElementById('ae_date').value;
+    const desc     = document.getElementById('ae_desc').value.trim();
+    const isOpen   = document.getElementById('ae_open').checked;
+    const err      = document.getElementById('aeErr');
+
+    if (!round || !subject || !duration || !maxScore) {
+        err.textContent = 'กรุณากรอกข้อมูลที่จำเป็น (*)'; err.classList.remove('hidden'); return;
+    }
+    try {
+        const data = { examType:type, round, subject, duration, totalQuestions:total, maxScore, description:desc, isOpen,
+                       date: dateVal ? firebase.firestore.Timestamp.fromDate(new Date(dateVal)) : null };
+        const ref = await db.collection('exams').add(data);
+        document.getElementById('addExamModal').classList.remove('show');
+        err.classList.add('hidden');
+        allExams = [...allExams, { id: ref.id, ...data }].sort((a,b)=>a.round-b.round);
+        renderExams(); buildRoundFilter();
+        alert('✅ เพิ่มข้อสอบสำเร็จ');
+    } catch (e) { err.textContent = 'บันทึกไม่สำเร็จ: '+e.message; err.classList.remove('hidden'); }
+}
+
+async function deleteExam(id) {
+    if (!confirm('ลบข้อสอบนี้? (ไม่กระทบผลการสอบที่ส่งแล้ว)')) return;
+    await db.collection('exams').doc(id).delete();
+    allExams = allExams.filter(e => e.id !== id);
+    renderExams();
+}
+
+async function toggleExamOpen(id, open) {
+    await db.collection('exams').doc(id).update({ isOpen: open });
+    const idx = allExams.findIndex(e => e.id === id);
+    if (idx >= 0) allExams[idx].isOpen = open;
+}
+
+// ===== TABS =====
+function switchMainTab(tab) {
+    currentMainTab = tab;
+    ['submissions','students','exams'].forEach(t => {
+        document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab);
+        document.getElementById('mtab-'+t).className = 'tab-btn ' + (t === tab ? 'active' : 'inactive');
+    });
+}
+
+// ===== EXPORT CSV =====
+function exportCSV() {
+    const data = getFiltered();
+    const headers = ['ชื่อ','ชั้น','รหัสนักเรียน','ประเภท','วิชา','ครั้งที่','คะแนน MC','คะแนนอัตนัย','คะแนนรวม','คะแนนสูงสุด','สถานะ'];
+    const rows = data.map(s => {
+        const ws = Object.values(s.writtenScores||{}).filter(v=>v!==null).reduce((a,b)=>a+b,0);
+        return [s.studentName, s.studentClass, s.studentId||'', s.examType, s.subject, s.round, s.autoScore||0, ws, s.totalScore||0, s.maxScore||100, s.isGraded?'ตรวจแล้ว':'รอตรวจ'].join(',');
+    });
+    const csv = '﻿' + [headers.join(','), ...rows].join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = `ผลการสอบ_${new Date().toLocaleDateString('th-TH')}.csv`;
+    a.click();
+}
+
+// ===== CLOSE MODALS ON BACKDROP =====
+['addStudentModal','addExamModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+        if (e.target.id === id) e.target.classList.remove('show');
+    });
+});
+</script>
+</body>
+</html>

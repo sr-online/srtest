@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หน้านักเรียน | ระบบทดสอบข้อสอบ A-Level, สอวน., O-NET | ห้องเรียนพิเศษ โรงเรียนสหราษฏร์รังสฤษดิ์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <style>
+        * { font-family: 'Sarabun', sans-serif; }
+        body { background: #f0f4f8; }
+        .topbar { background: linear-gradient(135deg, #0f2b6b, #1d4ed8); }
+        .student-card {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6, #1d4ed8);
+            border-radius: 20px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .student-card::before {
+            content: '';
+            position: absolute;
+            width: 250px; height: 250px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.06);
+            top: -80px; right: -80px;
+        }
+        .student-card::after {
+            content: '';
+            position: absolute;
+            width: 150px; height: 150px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.04);
+            bottom: -50px; left: 40px;
+        }
+        .exam-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .exam-card:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.12); transform: translateY(-3px); }
+        .exam-card.available { border-color: #22c55e; }
+        .exam-card.taken { border-color: #3b82f6; }
+        .exam-card.locked { border-color: #e2e8f0; }
+        .exam-card .card-ribbon {
+            position: absolute; top: 0; right: 0;
+            width: 0; height: 0;
+        }
+        .status-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+        }
+        .chip-locked  { background:#f1f5f9; color:#94a3b8; }
+        .chip-open    { background:#dcfce7; color:#15803d; }
+        .chip-taken   { background:#dbeafe; color:#1d4ed8; }
+        .btn-start { background: linear-gradient(135deg,#22c55e,#16a34a); transition:all 0.2s; }
+        .btn-start:hover { transform:translateY(-1px); box-shadow:0 4px 15px rgba(34,197,94,0.4); }
+        .btn-view  { background: linear-gradient(135deg,#3b82f6,#1d4ed8); transition:all 0.2s; }
+        .btn-view:hover  { transform:translateY(-1px); box-shadow:0 4px 15px rgba(59,130,246,0.4); }
+        .type-tab { transition: all 0.2s; border-bottom: 3px solid transparent; padding: 10px 20px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .type-tab.active { border-color: #1d4ed8; color: #1d4ed8; }
+        .type-tab.inactive { color: #94a3b8; }
+        .type-tab.inactive:hover { color: #475569; }
+        .tabs-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .tabs-scroll::-webkit-scrollbar { display: none; }
+        .score-modal { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
+        .score-modal.show { display:flex; align-items:center; justify-content:center; }
+        .score-detail-card { background:#fff; border-radius:24px; width:90%; max-width:480px; max-height:80vh; overflow-y:auto; }
+        .fade-in { animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        .round-badge {
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 14px;
+            background: linear-gradient(135deg, #1d4ed8, #4f46e5);
+            color: white; flex-shrink: 0;
+        }
+        .progress-ring { width: 60px; height: 60px; }
+    </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-lg">
+    <div class="flex items-center gap-3">
+        <i class="fas fa-graduation-cap text-yellow-400 text-xl"></i>
+        <div>
+            <p class="text-white font-bold text-sm">ระบบทดสอบข้อสอบ A-Level, สอวน., O-NET</p>
+            <p class="text-blue-200 text-xs">โรงเรียนสหราษฏร์รังสฤษดิ์</p>
+        </div>
+    </div>
+    <button onclick="logout()" class="flex items-center gap-2 text-blue-200 hover:text-white text-sm transition-colors bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg">
+        <i class="fas fa-sign-out-alt"></i>
+        <span class="hidden sm:inline">ออกจากระบบ</span>
+    </button>
+</div>
+
+<!-- Main -->
+<div class="max-w-4xl mx-auto px-4 py-6">
+
+    <!-- Student Card -->
+    <div class="student-card p-6 mb-6 shadow-xl fade-in">
+        <div class="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div class="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-user-graduate text-white text-3xl"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-blue-200 text-xs font-medium mb-0.5">ยินดีต้อนรับ</p>
+                <h2 id="stdName" class="text-2xl font-extrabold text-white">กำลังโหลด...</h2>
+                <div class="flex flex-wrap items-center gap-3 mt-2">
+                    <span class="text-sm text-blue-100"><i class="fas fa-school mr-1.5 opacity-70"></i><span id="stdClass">-</span></span>
+                    <span class="text-sm text-blue-100"><i class="fas fa-hashtag mr-1 opacity-70"></i>เลขที่ <span id="stdNumber">-</span></span>
+                    <span class="text-sm text-blue-100"><i class="fas fa-id-badge mr-1.5 opacity-70"></i><span id="stdId">-</span></span>
+                </div>
+            </div>
+            <div class="flex-shrink-0">
+                <div class="bg-yellow-400 text-blue-900 rounded-2xl px-4 py-2 text-center">
+                    <p class="text-xs font-semibold opacity-70">ประเภทสอบ</p>
+                    <p id="stdExamType" class="font-extrabold text-sm">-</p>
+                </div>
+            </div>
+        </div>
+        <!-- Stats row -->
+        <div class="relative z-10 mt-5 pt-5 border-t border-white/20 grid grid-cols-3 gap-4 text-center">
+            <div>
+                <p id="statTaken" class="text-2xl font-extrabold text-white">0</p>
+                <p class="text-blue-200 text-xs">ครั้งที่สอบแล้ว</p>
+            </div>
+            <div>
+                <p id="statTotal" class="text-2xl font-extrabold text-yellow-300">0</p>
+                <p class="text-blue-200 text-xs">คะแนนรวม</p>
+            </div>
+            <div>
+                <p id="statPending" class="text-2xl font-extrabold text-green-300">0</p>
+                <p class="text-blue-200 text-xs">รอสอบ</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam Type Tabs -->
+    <div class="bg-white rounded-2xl shadow-sm mb-5 overflow-hidden">
+        <div class="flex border-b border-gray-100">
+            <div id="tabLabel" class="px-4 py-3 text-sm text-gray-400 flex items-center border-r border-gray-100">
+                <i class="fas fa-filter mr-2"></i>หมวดสอบ:
+            </div>
+            <div id="typeTabs" class="flex tabs-scroll">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam Rounds Grid -->
+    <div id="examSection">
+        <div id="examLoading" class="text-center py-14">
+            <i class="fas fa-circle-notch fa-spin text-blue-400 text-3xl mb-3 block"></i>
+            <p class="text-gray-400">กำลังโหลดตารางสอบ...</p>
+        </div>
+        <div id="examGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden"></div>
+        <div id="examEmpty" class="hidden text-center py-14">
+            <i class="fas fa-calendar-times text-gray-200 text-5xl mb-4 block"></i>
+            <p class="text-gray-400 font-medium">ยังไม่มีตารางสอบสำหรับหมวดนี้</p>
+        </div>
+    </div>
+</div>
+
+<!-- Score Modal -->
+<div class="score-modal" id="scoreModal" onclick="closeScoreModal(event)">
+    <div class="score-detail-card p-6 mx-4 fade-in" id="scoreModalContent">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-chart-bar text-blue-500 mr-2"></i>ผลการสอบ</h3>
+            <button onclick="document.getElementById('scoreModal').classList.remove('show')"
+                class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div id="scoreModalBody"></div>
+    </div>
+</div>
+
+<script>
+// ===== AUTH CHECK =====
+const studentRaw = sessionStorage.getItem('student');
+if (!studentRaw) { window.location.href = 'index.html'; }
+const student = JSON.parse(studentRaw);
+
+let submissions = {};
+let exams = [];
+let currentType = student.examType || 'สอวน.';
+
+// ===== FILL STUDENT INFO =====
+document.getElementById('stdName').textContent    = student.name || 'ไม่ระบุชื่อ';
+document.getElementById('stdClass').textContent   = student.class || '-';
+document.getElementById('stdNumber').textContent  = student.number || '-';
+document.getElementById('stdId').textContent      = student.id;
+document.getElementById('stdExamType').textContent = student.examType || '-';
+
+// ===== LOGOUT =====
+function logout() {
+    if (confirm('ต้องการออกจากระบบ?')) {
+        sessionStorage.clear();
+        window.location.href = 'index.html';
+    }
+}
+
+// ===== BUILD TYPE TABS =====
+function buildTabs() {
+    const types = ['สอวน.', 'A-Level', 'O-NET'];
+    const icons = { 'สอวน.': 'fa-microscope', 'A-Level': 'fa-chart-bar', 'O-NET': 'fa-network-wired' };
+    const container = document.getElementById('typeTabs');
+    container.innerHTML = types.map(t => `
+        <button onclick="switchType('${t}')" id="tt-${t}"
+            class="type-tab ${t === currentType ? 'active' : 'inactive'} whitespace-nowrap flex items-center gap-2 text-sm">
+            <i class="fas ${icons[t]}"></i>${t}
+        </button>`).join('');
+}
+
+function switchType(type) {
+    currentType = type;
+    document.querySelectorAll('.type-tab').forEach(b => { b.className = b.className.replace('active','inactive'); });
+    const tab = document.getElementById('tt-' + type);
+    if (tab) tab.className = tab.className.replace('inactive','active');
+    renderExams();
+}
+
+// ===== LOAD DATA =====
+async function loadData() {
+    try {
+        // Load all exams
+        const examSnap = await db.collection('exams').orderBy('round').get();
+        exams = examSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Load student's submissions
+        const subSnap = await db.collection('submissions').where('studentId', '==', student.id).get();
+        subSnap.docs.forEach(d => {
+            const sub = d.data();
+            submissions[sub.examId] = { id: d.id, ...sub };
+        });
+
+        renderExams();
+        updateStats();
+    } catch (err) {
+        console.error(err);
+        document.getElementById('examLoading').innerHTML =
+            '<i class="fas fa-exclamation-triangle text-red-400 text-3xl mb-3 block"></i><p class="text-red-400">โหลดข้อมูลไม่สำเร็จ</p>';
+    }
+}
+
+// ===== UPDATE STATS =====
+function updateStats() {
+    const studentExams = exams.filter(e => e.examType === student.examType);
+    const takenExams = studentExams.filter(e => submissions[e.id]);
+    const pendingExams = studentExams.filter(e => e.isOpen && !submissions[e.id]);
+    const totalScore = Object.values(submissions).reduce((sum, s) => sum + (s.totalScore || 0), 0);
+    document.getElementById('statTaken').textContent  = takenExams.length;
+    document.getElementById('statTotal').textContent  = totalScore.toLocaleString();
+    document.getElementById('statPending').textContent = pendingExams.length;
+}
+
+// ===== RENDER EXAMS =====
+function renderExams() {
+    const loading = document.getElementById('examLoading');
+    const grid    = document.getElementById('examGrid');
+    const empty   = document.getElementById('examEmpty');
+
+    if (loading) loading.style.display = 'none';
+    grid.classList.remove('hidden');
+    empty.classList.add('hidden');
+
+    const filtered = exams.filter(e => e.examType === currentType);
+
+    if (!filtered.length) {
+        grid.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+    }
+
+    grid.innerHTML = filtered.map(exam => buildExamCard(exam)).join('');
+}
+
+function buildExamCard(exam) {
+    const sub   = submissions[exam.id];
+    const taken = !!sub;
+    const open  = exam.isOpen && !taken;
+    const locked = !exam.isOpen && !taken;
+
+    const dateStr = exam.date
+        ? (exam.date.toDate ? formatDate(exam.date.toDate()) : formatDate(new Date(exam.date)))
+        : 'ยังไม่กำหนดวัน';
+
+    const subjectIcons = {
+        'คณิตศาสตร์': 'fa-square-root-variable',
+        'ฟิสิกส์': 'fa-atom', 'เคมี': 'fa-flask', 'ชีววิทยา': 'fa-dna',
+        'ภาษาอังกฤษ': 'fa-language', 'ภาษาไทย': 'fa-book', 'สังคม': 'fa-globe-asia',
+        'วิทยาศาสตร์': 'fa-microscope', 'คอมพิวเตอร์': 'fa-laptop-code'
+    };
+    const icon = subjectIcons[exam.subject] || 'fa-file-alt';
+    const typeColors = { 'สอวน.': '#1d4ed8', 'A-Level': '#059669', 'O-NET': '#7c3aed' };
+    const color = typeColors[exam.examType] || '#1d4ed8';
+
+    let statusHTML, actionHTML;
+    if (taken) {
+        const score = sub.totalScore || 0;
+        const maxScore = exam.maxScore || 100;
+        const pct = Math.round(score / maxScore * 100);
+        const graded = sub.isGraded;
+        statusHTML = `
+            <span class="status-chip chip-taken">
+                <i class="fas fa-check-circle"></i>ทดสอบแล้ว${!graded ? ' (รอตรวจ)' : ''}
+            </span>`;
+        actionHTML = `
+            <button onclick="showScore('${exam.id}')"
+                class="btn-view w-full mt-3 py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2">
+                <i class="fas fa-chart-line"></i>ดูผลคะแนน
+            </button>`;
+    } else if (open) {
+        statusHTML = `<span class="status-chip chip-open"><i class="fas fa-door-open"></i>เปิดทดสอบแล้ว</span>`;
+        actionHTML = `
+            <button onclick="goToExam('${exam.id}')"
+                class="btn-start w-full mt-3 py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2">
+                <i class="fas fa-play"></i>เริ่มทดสอบ
+            </button>`;
+    } else {
+        statusHTML = `<span class="status-chip chip-locked"><i class="fas fa-lock"></i>ยังไม่เปิดทดสอบ</span>`;
+        actionHTML = `
+            <button disabled
+                class="w-full mt-3 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 bg-gray-100 text-gray-400 cursor-not-allowed">
+                <i class="fas fa-clock"></i>${exam.date ? 'รอถึง ' + dateStr : 'รอการเปิด'}
+            </button>`;
+    }
+
+    const scoreDisplay = taken && sub.isGraded ? `
+        <div class="mt-3 pt-3 border-t border-gray-100">
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>คะแนนที่ได้</span>
+                <span class="font-bold text-base text-blue-600">${sub.totalScore || 0} / ${exam.maxScore || 100}</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2">
+                <div class="h-2 rounded-full" style="width:${Math.round((sub.totalScore||0)/(exam.maxScore||100)*100)}%; background:${color}"></div>
+            </div>
+        </div>` : (taken && !sub.isGraded ? `
+        <div class="mt-3 p-2 bg-yellow-50 rounded-xl text-center">
+            <p class="text-xs text-yellow-600 font-medium"><i class="fas fa-hourglass-half mr-1"></i>รอครูตรวจข้อเขียน</p>
+        </div>` : '');
+
+    return `
+    <div class="exam-card ${taken ? 'taken' : open ? 'available' : 'locked'} p-5 fade-in">
+        <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+                <div class="round-badge" style="background:linear-gradient(135deg,${color},${color}cc)">${exam.round}</div>
+                <div>
+                    <p class="text-xs text-gray-400 font-medium">ครั้งที่ ${exam.round}</p>
+                    <h3 class="font-bold text-gray-800">${exam.subject || exam.examType}</h3>
+                </div>
+            </div>
+            <i class="fas ${icon} text-gray-200 text-3xl"></i>
+        </div>
+        <div class="flex items-center justify-between mb-3">
+            ${statusHTML}
+            <span class="text-xs text-gray-400"><i class="fas fa-calendar mr-1"></i>${dateStr}</span>
+        </div>
+        <div class="flex items-center gap-4 text-xs text-gray-500 mb-1">
+            <span><i class="fas fa-clock mr-1 text-gray-400"></i>${exam.duration || '-'} นาที</span>
+            <span><i class="fas fa-list-ol mr-1 text-gray-400"></i>${exam.totalQuestions || '-'} ข้อ</span>
+            <span><i class="fas fa-star mr-1 text-gray-400"></i>${exam.maxScore || '-'} คะแนน</span>
+        </div>
+        ${scoreDisplay}
+        ${actionHTML}
+    </div>`;
+}
+
+function formatDate(d) {
+    if (!d || !(d instanceof Date)) return 'ไม่ระบุ';
+    const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
+function goToExam(examId) {
+    sessionStorage.setItem('currentExamId', examId);
+    window.location.href = 'exam.html?examId=' + examId;
+}
+
+// ===== SHOW SCORE MODAL =====
+async function showScore(examId) {
+    const modal = document.getElementById('scoreModal');
+    const body  = document.getElementById('scoreModalBody');
+    const sub   = submissions[examId];
+    const exam  = exams.find(e => e.id === examId);
+    if (!sub || !exam) return;
+
+    modal.classList.add('show');
+    body.innerHTML = '<div class="text-center py-8"><i class="fas fa-circle-notch fa-spin text-blue-400 text-2xl"></i></div>';
+
+    const score    = sub.totalScore || 0;
+    const maxScore = exam.maxScore || 100;
+    const pct      = Math.round(score / maxScore * 100);
+    const color    = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+    const grade    = pct >= 80 ? 'ดีมาก' : pct >= 70 ? 'ดี' : pct >= 60 ? 'พอใช้' : 'ต้องพัฒนา';
+    const dateSubmit = sub.submittedAt?.toDate ? formatDate(sub.submittedAt.toDate()) : '-';
+    const timeTaken = sub.timeTaken ? `${Math.floor(sub.timeTaken/60)} นาที ${sub.timeTaken%60} วินาที` : '-';
+
+    body.innerHTML = `
+        <div class="text-center mb-5">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full mb-3"
+                style="background:${color}20; border:4px solid ${color}">
+                <span class="text-3xl font-extrabold" style="color:${color}">${pct}%</span>
+            </div>
+            <p class="text-2xl font-extrabold text-gray-800">${score} <span class="text-sm text-gray-400">/ ${maxScore}</span></p>
+            <span class="inline-block mt-1 px-4 py-1 rounded-full text-sm font-bold text-white" style="background:${color}">${grade}</span>
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4 space-y-3 text-sm">
+            <div class="flex justify-between"><span class="text-gray-500">การสอบ</span><span class="font-semibold">${exam.examType} ครั้งที่ ${exam.round}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">วิชา</span><span class="font-semibold">${exam.subject || '-'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">คะแนนอัตโนมัติ</span><span class="font-semibold">${sub.autoScore || 0} คะแนน</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">คะแนนอัตนัย</span>
+                <span class="font-semibold">${sub.isGraded ? (Object.values(sub.writtenScores||{}).reduce((a,b)=>a+b,0)) + ' คะแนน' : '<span class="text-yellow-600">รอตรวจ</span>'}</span>
+            </div>
+            <div class="flex justify-between"><span class="text-gray-500">เวลาที่ใช้</span><span class="font-semibold">${timeTaken}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">วันที่ส่ง</span><span class="font-semibold">${dateSubmit}</span></div>
+        </div>
+        ${!sub.isGraded ? '<div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-center text-sm text-yellow-700"><i class="fas fa-info-circle mr-1"></i>คะแนนอาจเปลี่ยนแปลงหลังครูตรวจข้อเขียน</div>' : ''}`;
+}
+
+function closeScoreModal(e) {
+    if (e.target.id === 'scoreModal') {
+        document.getElementById('scoreModal').classList.remove('show');
+    }
+}
+
+// ===== INIT =====
+buildTabs();
+loadData();
+</script>
+</body>
+</html>
