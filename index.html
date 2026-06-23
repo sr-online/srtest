@@ -293,8 +293,10 @@
         const typeClass = { 'สอวน.': 'badge-สอวน', 'A-Level': 'badge-alevel', 'O-NET': 'badge-onet' };
         const medals = ['🥇', '🥈', '🥉'];
 
+        // Dense Ranking: 1,1,2,3,3,4...
+        let rank = 1;
         el.innerHTML = data.slice(0, 10).map((s, i) => {
-            const rank = i + 1;
+            if (i > 0 && (s.totalScore || 0) < (data[i-1].totalScore || 0)) rank++;
             const pct = Math.round((s.totalScore || 0) / maxScore * 100);
             const badgeCls = rank === 1 ? 'rank-gold' : rank === 2 ? 'rank-silver' : rank === 3 ? 'rank-bronze' : 'rank-other';
             const tc = typeClass[s.examType] || 'badge-onet';

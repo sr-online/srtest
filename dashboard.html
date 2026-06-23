@@ -205,6 +205,9 @@
             <button onclick="switchMainTab('exams')" id="mtab-exams" class="tab-btn inactive">
                 <i class="fas fa-file-alt mr-2"></i>ข้อสอบ
             </button>
+            <button onclick="switchMainTab('scoreboard')" id="mtab-scoreboard" class="tab-btn inactive">
+                <i class="fas fa-trophy mr-2"></i>กระดานคะแนน
+            </button>
         </div>
     </div>
 
@@ -334,6 +337,42 @@
                     </thead>
                     <tbody id="examTableBody">
                         <tr><td colspan="9" class="text-center py-8 text-gray-400">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SCOREBOARD TAB ===== -->
+    <div id="tab-scoreboard" class="hidden">
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                <h3 class="font-bold text-gray-700"><i class="fas fa-trophy text-yellow-500 mr-2"></i>กระดานคะแนนสูงสุด</h3>
+                <div class="flex gap-2 items-center">
+                    <select id="sbTypeFilter" onchange="renderScoreboard()" class="text-sm border-2 border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-400">
+                        <option value="all">ทุกประเภท</option>
+                        <option value="A-Level">A-Level</option>
+                        <option value="สอวน.">สอวน.</option>
+                        <option value="O-NET">O-NET</option>
+                    </select>
+                    <button onclick="loadScoreboard()" class="text-sm px-4 py-1.5 rounded-xl bg-blue-50 text-blue-600 border-2 border-blue-200 font-semibold hover:bg-blue-100 transition-all">
+                        <i class="fas fa-sync-alt mr-1"></i>รีเฟรช
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="text-center w-16">อันดับ</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>ชั้น</th>
+                            <th class="text-center">จำนวนครั้ง</th>
+                            <th class="text-center">คะแนนรวมสูงสุด</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scoreboardBody">
+                        <tr><td colspan="5" class="text-center py-10 text-gray-400">เลือก tab กระดานคะแนนเพื่อโหลด</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -752,6 +791,7 @@ function renderSubmissions() {
         const gradeBtn = !s.isGraded && hasWritten
             ? `<button onclick="openGradeModal('${s.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all"><i class="fas fa-pen mr-1"></i>ตรวจ</button>`
             : `<button onclick="openGradeModal('${s.id}')" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 transition-all"><i class="fas fa-eye mr-1"></i>ดู</button>`;
+        const deleteBtn = `<button onclick="deleteSubmission('${s.id}','${(s.studentName||'').replace(/'/g,"\\'")}')" class="text-xs px-2 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 hover:border-red-400 hover:text-red-600 transition-all ml-1" title="ลบการตอบนี้"><i class="fas fa-trash"></i></button>`;
         return `<tr>
             <td><p class="font-semibold text-gray-800">${s.studentName||'-'}</p><p class="text-xs text-gray-400">${s.studentClass||''} • ${s.studentId||s.studentId||''}</p></td>
             <td><span class="badge ${tc}">${s.examType||'-'}</span><p class="text-xs text-gray-400 mt-1">${s.subject||'-'}</p></td>
@@ -760,13 +800,26 @@ function renderSubmissions() {
             <td class="text-xs text-gray-500">${time}</td>
             <td>${scoreDisp}</td>
             <td>${statusBadge}</td>
-            <td>${gradeBtn}</td>
+            <td class="whitespace-nowrap">${gradeBtn}${deleteBtn}</td>
         </tr>`;
     }).join('');
 }
 
 function prevPage() { if (currentPage > 1) { currentPage--; renderSubmissions(); } }
 function nextPage() { currentPage++; renderSubmissions(); }
+
+// ===== DELETE SUBMISSION =====
+async function deleteSubmission(subId, studentName) {
+    if (!confirm(`ลบการตอบของ "${studentName}" ?\n\nการกระทำนี้ไม่สามารถกู้คืนได้`)) return;
+    try {
+        await db.collection('submissions').doc(subId).delete();
+        allSubmissions = allSubmissions.filter(s => s.id !== subId);
+        if ((currentPage - 1) * pageSize >= allSubmissions.length && currentPage > 1) currentPage--;
+        renderSubmissions();
+    } catch(e) {
+        alert('เกิดข้อผิดพลาด: ' + e.message);
+    }
+}
 
 // ===== GRADE MODAL =====
 async function openGradeModal(subId) {
@@ -1079,10 +1132,67 @@ async function toggleExamOpen(id, open) {
 // ===== TABS =====
 function switchMainTab(tab) {
     currentMainTab = tab;
-    ['submissions','students','exams'].forEach(t => {
+    ['submissions','students','exams','scoreboard'].forEach(t => {
         document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab);
         document.getElementById('mtab-'+t).className = 'tab-btn ' + (t === tab ? 'active' : 'inactive');
     });
+    if (tab === 'scoreboard') loadScoreboard();
+}
+
+// ===== SCOREBOARD =====
+let allScores = [];
+
+async function loadScoreboard() {
+    document.getElementById('scoreboardBody').innerHTML =
+        '<tr><td colspan="5" class="text-center py-8 text-gray-400"><i class="fas fa-circle-notch fa-spin mr-2"></i>กำลังโหลด...</td></tr>';
+    try {
+        const snap = await db.collection('scores').get();
+        allScores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderScoreboard();
+    } catch(e) {
+        document.getElementById('scoreboardBody').innerHTML =
+            `<tr><td colspan="5" class="text-center py-8 text-red-400">เกิดข้อผิดพลาด: ${e.message}</td></tr>`;
+    }
+}
+
+function renderScoreboard() {
+    const typeFilter = document.getElementById('sbTypeFilter').value;
+    let data = typeFilter === 'all' ? [...allScores] : allScores.filter(s => s.examType === typeFilter);
+    data.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+
+    const medals = ['🥇','🥈','🥉'];
+    const typeClass = { 'สอวน.': 'badge-สอวน', 'A-Level': 'badge-alevel', 'O-NET': 'badge-onet' };
+
+    if (!data.length) {
+        document.getElementById('scoreboardBody').innerHTML =
+            '<tr><td colspan="5" class="text-center py-10 text-gray-400">ไม่พบข้อมูลคะแนน</td></tr>';
+        return;
+    }
+
+    // Standard Competition Ranking: tied scores share the same rank
+    let rank = 1;
+    document.getElementById('scoreboardBody').innerHTML = data.map((s, i) => {
+        if (i > 0 && (s.totalScore || 0) < (data[i-1].totalScore || 0)) rank++;
+        const medal = rank <= 3 ? `<span class="text-xl">${medals[rank-1]}</span>` : '';
+        const rankDisp = rank <= 3
+            ? `<div class="flex flex-col items-center">${medal}<span class="text-xs font-bold text-gray-500">ที่ ${rank}</span></div>`
+            : `<span class="font-bold text-gray-600 text-lg">${rank}</span>`;
+        const tc = typeClass[s.examType] || 'badge-onet';
+        const rowBg = rank === 1 ? 'bg-yellow-50' : rank === 2 ? 'bg-gray-50' : rank === 3 ? 'bg-orange-50' : '';
+        return `<tr class="${rowBg}">
+            <td class="text-center">${rankDisp}</td>
+            <td>
+                <p class="font-semibold text-gray-800">${s.studentName || '-'}</p>
+                ${s.examType ? `<span class="badge ${tc} mt-1">${s.examType}</span>` : ''}
+            </td>
+            <td class="text-gray-600">${s.class || '-'}</td>
+            <td class="text-center text-gray-500">${s.examCount || '-'} ครั้ง</td>
+            <td class="text-center">
+                <span class="font-extrabold text-2xl ${rank===1?'text-yellow-500':rank===2?'text-gray-500':rank===3?'text-orange-500':'text-blue-600'}">${s.totalScore ?? '-'}</span>
+                <span class="text-xs text-gray-400 ml-1">คะแนน</span>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 // ===== EXPORT CSV =====
