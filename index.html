@@ -187,7 +187,11 @@
                     </div>
                 </div>
 
-                <!-- Filter tabs -->
+                <!-- Round tabs -->
+                <div id="roundTabs" class="h-scroll mb-2">
+                    <span class="text-xs text-gray-400 flex items-center mr-1 flex-shrink-0 font-medium">ครั้งที่:</span>
+                </div>
+                <!-- Type filter tabs -->
                 <div class="h-scroll mb-4">
                     <button onclick="filterBoard('all')" id="ftab-all" class="tab-active px-3 py-1 rounded-lg text-xs font-semibold transition-all">ทั้งหมด</button>
                     <button onclick="filterBoard('สอวน.')" id="ftab-สอวน." class="tab-inactive px-3 py-1 rounded-lg text-xs font-semibold transition-all">สอวน.</button>
@@ -259,47 +263,85 @@
     });
 
     // ===== SCOREBOARD =====
+    let allSubs = [];
+    let boardRound = null;
+    let boardType  = 'all';
+
     function loadBoard() {
-        db.collection('scores').orderBy('totalScore', 'desc').onSnapshot((snap) => {
-            allScores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderBoard(allScores);
-        }, (err) => {
+        db.collection('submissions').onSnapshot(snap => {
+            allSubs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const rounds = [...new Set(allSubs.map(s => s.round).filter(r => r != null))].sort((a,b) => a-b);
+            if (!boardRound && rounds.length) boardRound = rounds[rounds.length - 1];
+            renderRoundTabs(rounds);
+            renderBoard();
+        }, () => {
             document.getElementById('boardList').innerHTML =
                 '<p class="text-center text-gray-400 py-6 text-sm"><i class="fas fa-wifi mr-1"></i>ไม่สามารถโหลดข้อมูลได้</p>';
         });
     }
 
+    function renderRoundTabs(rounds) {
+        const cont = document.getElementById('roundTabs');
+        const label = '<span class="text-xs text-gray-400 flex items-center mr-1 flex-shrink-0 font-medium">ครั้งที่:</span>';
+        cont.innerHTML = label + rounds.map(r =>
+            `<button onclick="setRound(${r})" id="rtab-${r}"
+             class="${boardRound === r ? 'tab-active' : 'tab-inactive'} px-3 py-1 rounded-lg text-xs font-semibold transition-all">
+             ครั้งที่ ${r}</button>`
+        ).join('');
+    }
+
+    function setRound(r) {
+        boardRound = r;
+        const rounds = [...new Set(allSubs.map(s => s.round).filter(Boolean))].sort((a,b) => a-b);
+        renderRoundTabs(rounds);
+        renderBoard();
+    }
+
     function filterBoard(type) {
+        boardType = type;
         document.querySelectorAll('[id^="ftab-"]').forEach(b => {
             b.className = 'tab-inactive px-3 py-1 rounded-lg text-xs font-semibold transition-all';
         });
         document.getElementById('ftab-' + type).className = 'tab-active px-3 py-1 rounded-lg text-xs font-semibold transition-all';
-        const data = type === 'all' ? allScores : allScores.filter(s => s.examType === type);
-        renderBoard(data);
+        renderBoard();
     }
 
-    function renderBoard(data) {
+    function renderBoard() {
         const el = document.getElementById('boardList');
         const loading = document.getElementById('boardLoading');
         if (loading) loading.remove();
-        document.getElementById('boardCount').textContent = `แสดง ${Math.min(data.length,10)} จาก ${data.length} คน`;
 
-        if (!data.length) {
+        // Filter by round + type
+        let data = allSubs.filter(s => s.round == boardRound);
+        if (boardType !== 'all') data = data.filter(s => s.examType === boardType);
+
+        // Deduplicate: best score per student
+        const map = {};
+        data.forEach(s => {
+            const score = s.totalScore ?? s.autoScore ?? 0;
+            if (!map[s.studentId] || score > (map[s.studentId].score ?? 0)) {
+                map[s.studentId] = { studentName: s.studentName, class: s.studentClass, examType: s.examType, score };
+            }
+        });
+        const sorted = Object.values(map).sort((a, b) => b.score - a.score);
+
+        document.getElementById('boardCount').textContent = `แสดง ${Math.min(sorted.length,10)} จาก ${sorted.length} คน`;
+
+        if (!sorted.length) {
             el.innerHTML = '<div class="text-center py-10"><i class="fas fa-star text-gray-200 text-4xl mb-3 block"></i><p class="text-gray-400 text-sm">ยังไม่มีข้อมูลคะแนน</p></div>';
             return;
         }
 
-        const maxScore = Math.max(...data.map(s => s.totalScore || 0), 1);
+        const maxScore = Math.max(...sorted.map(s => s.score), 1);
         const typeClass = { 'สอวน.': 'badge-สอวน', 'A-Level': 'badge-alevel', 'O-NET': 'badge-onet' };
         const medals = ['🥇', '🥈', '🥉'];
 
-        // Dense Ranking: 1,1,2,3,3,4...
         let rank = 1;
-        el.innerHTML = data.slice(0, 10).map((s, i) => {
-            if (i > 0 && (s.totalScore || 0) < (data[i-1].totalScore || 0)) rank++;
-            const pct = Math.round((s.totalScore || 0) / maxScore * 100);
+        el.innerHTML = sorted.slice(0, 10).map((s, i) => {
+            if (i > 0 && s.score < sorted[i-1].score) rank++;
+            const pct  = Math.round(s.score / maxScore * 100);
             const badgeCls = rank === 1 ? 'rank-gold' : rank === 2 ? 'rank-silver' : rank === 3 ? 'rank-bronze' : 'rank-other';
-            const tc = typeClass[s.examType] || 'badge-onet';
+            const tc   = typeClass[s.examType] || 'badge-onet';
             return `
             <div class="score-row flex items-center gap-3 px-3 py-2.5">
                 <div class="${badgeCls} w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
@@ -308,14 +350,12 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between mb-1">
                         <span class="font-semibold text-gray-800 text-sm truncate">${s.studentName || 'ไม่ระบุชื่อ'}</span>
-                        <span class="font-extrabold text-blue-600 text-sm ml-2 flex-shrink-0">${(s.totalScore||0).toLocaleString()}</span>
+                        <span class="font-extrabold text-blue-600 text-sm ml-2 flex-shrink-0">${s.score.toLocaleString()}</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-gray-400">${s.class || ''}</span>
                         <span class="exam-badge ${tc}">${s.examType || ''}</span>
-                        <div class="flex-1 bar-track">
-                            <div class="bar-fill" style="width:${pct}%"></div>
-                        </div>
+                        <div class="flex-1 bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
                     </div>
                 </div>
             </div>`;

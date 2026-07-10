@@ -471,7 +471,7 @@ async function loadSingleExam() {
 }
 
 async function loadCombinedExam(round) {
-    const examSnap = await db.collection('exams').where('round','==',round).get();
+    const examSnap = await db.collection('exams').where('round','==',round).where('examType','==',student.examType).get();
     const allExams = examSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (!allExams.length) { alert('ไม่พบข้อสอบสำหรับรอบนี้'); history.back(); return; }
 
